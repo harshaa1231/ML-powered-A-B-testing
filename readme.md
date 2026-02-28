@@ -4,7 +4,6 @@
 
 A powerful, beginner-friendly platform for analyzing A/B test experiments. Built with Streamlit, it combines statistical testing and machine learning to help you understand what works, why it works, and who it works best for — no data science degree required.
 
-You can test the app here: https://ml-powered-a-b-testing-kcjaepahqb7wsxljym7fru.streamlit.app/
 ---
 
 ## Features
@@ -38,6 +37,9 @@ Six built-in demo datasets across different industries so you can explore the to
 - Healthcare treatment outcomes
 
 Plus a custom data generator for creating large-scale synthetic datasets.
+
+### AI Chat
+An AI-powered chat assistant (ABBot) built on Meta's Llama 3.2 model via Hugging Face. Ask any A/B testing question in plain English. ABBot is context-aware — if you've run a test during your session it already knows your numbers and can discuss them directly. Requires a Hugging Face token stored as `HF_TOKEN`.
 
 ---
 
@@ -106,6 +108,7 @@ ab-testing-pro/
 ├── ml_engine.py               # Machine learning engine
 ├── sample_data.py             # Sample dataset generator
 ├── enhanced_data_generator.py # Large-scale synthetic data generator
+├── hf_chat.py                 # Hugging Face AI Chat client
 ├── requirements.txt           # Python dependencies
 ├── readme.md                  # This file
 └── .streamlit/
@@ -121,6 +124,7 @@ ab-testing-pro/
 | `ml_engine.py` | Multi-model ML engine with auto column detection, cross-validation, uplift modeling, and feature importance |
 | `sample_data.py` | Six pre-built industry demo datasets |
 | `enhanced_data_generator.py` | Generates 100k+ row synthetic datasets with realistic patterns across multiple domains |
+| `hf_chat.py` | AI Chat page backend — connects to Hugging Face Inference API (Llama 3.2), manages chat history and context injection |
 
 ---
 
@@ -161,10 +165,7 @@ ab-testing-pro/
 - **Plain English results**: Every statistical result comes with a human-readable explanation — no jargon
 - **Zero configuration**: Auto-detection means users don't have to manually map columns or choose test types
 - **Multi-model approach**: Trains several algorithms and compares them, so users get the best model without needing ML expertise
-- **Self-contained**: No external APIs, databases, or authentication required — everything runs in-browser
+- **AI Chat**: Conversational AI assistant (ABBot) that knows your test results and answers A/B testing questions in plain English
 
 ---
 
-## License
-
-This project is provided as-is for educational and analytical use.
