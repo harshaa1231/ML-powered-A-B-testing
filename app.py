@@ -1782,9 +1782,426 @@ elif page == "Sample Datasets":
                               "text/csv", width='stretch')
 
 
+elif page == "AI Chat":
+    st.markdown('<div class="section-header">AI Chat — Ask Anything</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="help-box">
+        <p>Chat with <strong>ABBot</strong> — an AI assistant powered by Meta's Llama 3.2 model running on Hugging Face.
+        Ask anything about A/B testing, your results, statistics, or data science. It understands context from tests you've run in this session.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Clear Chat", width='stretch'):
+            st.session_state.chat_messages = []
+            st.rerun()
+
+    has_results = len(st.session_state.predictions) > 0
+    if has_results:
+        latest = st.session_state.predictions[-1]
+        context_note = f"💡 I can see your latest test result (p={latest.get('p_value',1):.4f}, uplift={latest.get('uplift_percentage',0):.1f}%). Ask me what it means!"
+        st.info(context_note)
+
+    if not st.session_state.chat_messages:
+        st.markdown("#### Not sure what to ask? Try one of these:")
+        cols = st.columns(2)
+        for i, q in enumerate(STARTER_QUESTIONS):
+            with cols[i % 2]:
+                if st.button(q, key=f"starter_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        context = build_context_message(st.session_state.predictions[-1]) if has_results else None
+                        msgs = st.session_state.chat_messages.copy()
+                        if context:
+                            msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+                        reply = chat_with_hf(msgs)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+    st.markdown("---")
+
+    for msg in st.session_state.chat_messages:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <div style="background:#3b82f6; color:white; padding:12px 16px; border-radius:16px 16px 4px 16px;
+                            max-width:75%; font-size:14px; line-height:1.6;">
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-start; margin-bottom:12px;">
+                <div style="background:#1e293b; border:1px solid #334155; color:#e2e8f0; padding:12px 16px;
+                            border-radius:16px 16px 16px 4px; max-width:80%; font-size:14px; line-height:1.7;">
+                    <span style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">ABBot</span>
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("")
+    with st.form(key="chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input(
+                "Message",
+                placeholder="Ask me anything about A/B testing, your results, statistics...",
+                label_visibility="collapsed"
+            )
+        with col2:
+            send = st.form_submit_button("Send", use_container_width=True, type="primary")
+
+    if send and user_input.strip():
+        st.session_state.chat_messages.append({"role": "user", "content": user_input.strip()})
+        with st.spinner("ABBot is thinking..."):
+            msgs = st.session_state.chat_messages.copy()
+            if has_results and len(msgs) == 1:
+                context = build_context_message(st.session_state.predictions[-1])
+                if context:
+                    msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+            reply = chat_with_hf(msgs)
+        st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+        st.rerun()
+
+    if st.session_state.chat_messages:
+        st.markdown("")
+        st.markdown("#### Quick follow-up questions:")
+        follow_ups = [
+            "Can you give me a concrete business example?",
+            "How do I explain this to a non-technical person?",
+            "What should I do next?",
+            "Can you make that simpler?",
+        ]
+        cols = st.columns(4)
+        for i, q in enumerate(follow_ups):
+            with cols[i]:
+                if st.button(q, key=f"followup_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        reply = chat_with_hf(st.session_state.chat_messages)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+
+elif page == "AI Chat":
+    st.markdown('<div class="section-header">AI Chat — Ask Anything</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="help-box">
+        <p>Chat with <strong>ABBot</strong> — an AI assistant powered by Meta's Llama 3.2 model running on Hugging Face.
+        Ask anything about A/B testing, your results, statistics, or data science. It understands context from tests you've run in this session.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Clear Chat", width='stretch'):
+            st.session_state.chat_messages = []
+            st.rerun()
+
+    has_results = len(st.session_state.predictions) > 0
+    if has_results:
+        latest = st.session_state.predictions[-1]
+        context_note = f"💡 I can see your latest test result (p={latest.get('p_value',1):.4f}, uplift={latest.get('uplift_percentage',0):.1f}%). Ask me what it means!"
+        st.info(context_note)
+
+    if not st.session_state.chat_messages:
+        st.markdown("#### Not sure what to ask? Try one of these:")
+        cols = st.columns(2)
+        for i, q in enumerate(STARTER_QUESTIONS):
+            with cols[i % 2]:
+                if st.button(q, key=f"starter_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        context = build_context_message(st.session_state.predictions[-1]) if has_results else None
+                        msgs = st.session_state.chat_messages.copy()
+                        if context:
+                            msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+                        reply = chat_with_hf(msgs)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+    st.markdown("---")
+
+    for msg in st.session_state.chat_messages:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <div style="background:#3b82f6; color:white; padding:12px 16px; border-radius:16px 16px 4px 16px;
+                            max-width:75%; font-size:14px; line-height:1.6;">
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-start; margin-bottom:12px;">
+                <div style="background:#1e293b; border:1px solid #334155; color:#e2e8f0; padding:12px 16px;
+                            border-radius:16px 16px 16px 4px; max-width:80%; font-size:14px; line-height:1.7;">
+                    <span style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">ABBot</span>
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("")
+    with st.form(key="chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input(
+                "Message",
+                placeholder="Ask me anything about A/B testing, your results, statistics...",
+                label_visibility="collapsed"
+            )
+        with col2:
+            send = st.form_submit_button("Send", use_container_width=True, type="primary")
+
+    if send and user_input.strip():
+        st.session_state.chat_messages.append({"role": "user", "content": user_input.strip()})
+        with st.spinner("ABBot is thinking..."):
+            msgs = st.session_state.chat_messages.copy()
+            if has_results and len(msgs) == 1:
+                context = build_context_message(st.session_state.predictions[-1])
+                if context:
+                    msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+            reply = chat_with_hf(msgs)
+        st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+        st.rerun()
+
+    if st.session_state.chat_messages:
+        st.markdown("")
+        st.markdown("#### Quick follow-up questions:")
+        follow_ups = [
+            "Can you give me a concrete business example?",
+            "How do I explain this to a non-technical person?",
+            "What should I do next?",
+            "Can you make that simpler?",
+        ]
+        cols = st.columns(4)
+        for i, q in enumerate(follow_ups):
+            with cols[i]:
+                if st.button(q, key=f"followup_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        reply = chat_with_hf(st.session_state.chat_messages)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+
+elif page == "AI Chat":
+    st.markdown('<div class="section-header">AI Chat — Ask Anything</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="help-box">
+        <p>Chat with <strong>ABBot</strong> — an AI assistant powered by Meta's Llama 3.2 model running on Hugging Face.
+        Ask anything about A/B testing, your results, statistics, or data science. It understands context from tests you've run in this session.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Clear Chat", width='stretch'):
+            st.session_state.chat_messages = []
+            st.rerun()
+
+    has_results = len(st.session_state.predictions) > 0
+    if has_results:
+        latest = st.session_state.predictions[-1]
+        context_note = f"💡 I can see your latest test result (p={latest.get('p_value',1):.4f}, uplift={latest.get('uplift_percentage',0):.1f}%). Ask me what it means!"
+        st.info(context_note)
+
+    if not st.session_state.chat_messages:
+        st.markdown("#### Not sure what to ask? Try one of these:")
+        cols = st.columns(2)
+        for i, q in enumerate(STARTER_QUESTIONS):
+            with cols[i % 2]:
+                if st.button(q, key=f"starter_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        context = build_context_message(st.session_state.predictions[-1]) if has_results else None
+                        msgs = st.session_state.chat_messages.copy()
+                        if context:
+                            msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+                        reply = chat_with_hf(msgs)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+    st.markdown("---")
+
+    for msg in st.session_state.chat_messages:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <div style="background:#3b82f6; color:white; padding:12px 16px; border-radius:16px 16px 4px 16px;
+                            max-width:75%; font-size:14px; line-height:1.6;">
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-start; margin-bottom:12px;">
+                <div style="background:#1e293b; border:1px solid #334155; color:#e2e8f0; padding:12px 16px;
+                            border-radius:16px 16px 16px 4px; max-width:80%; font-size:14px; line-height:1.7;">
+                    <span style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">ABBot</span>
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("")
+    with st.form(key="chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input(
+                "Message",
+                placeholder="Ask me anything about A/B testing, your results, statistics...",
+                label_visibility="collapsed"
+            )
+        with col2:
+            send = st.form_submit_button("Send", use_container_width=True, type="primary")
+
+    if send and user_input.strip():
+        st.session_state.chat_messages.append({"role": "user", "content": user_input.strip()})
+        with st.spinner("ABBot is thinking..."):
+            msgs = st.session_state.chat_messages.copy()
+            if has_results and len(msgs) == 1:
+                context = build_context_message(st.session_state.predictions[-1])
+                if context:
+                    msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+            reply = chat_with_hf(msgs)
+        st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+        st.rerun()
+
+    if st.session_state.chat_messages:
+        st.markdown("")
+        st.markdown("#### Quick follow-up questions:")
+        follow_ups = [
+            "Can you give me a concrete business example?",
+            "How do I explain this to a non-technical person?",
+            "What should I do next?",
+            "Can you make that simpler?",
+        ]
+        cols = st.columns(4)
+        for i, q in enumerate(follow_ups):
+            with cols[i]:
+                if st.button(q, key=f"followup_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        reply = chat_with_hf(st.session_state.chat_messages)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+
+elif page == "AI Chat":
+    st.markdown('<div class="section-header">AI Chat — Ask Anything</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="help-box">
+        <p>Chat with <strong>A/B testing LLM</strong> — an AI assistant powered by Meta's Llama 3.2 model running on Hugging Face.
+        Ask anything about A/B testing, your results, statistics, or data science. It understands context from tests you've run in this session.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Clear Chat", width='stretch'):
+            st.session_state.chat_messages = []
+            st.rerun()
+
+    has_results = len(st.session_state.predictions) > 0
+    if has_results:
+        latest = st.session_state.predictions[-1]
+        context_note = f"💡 I can see your latest test result (p={latest.get('p_value',1):.4f}, uplift={latest.get('uplift_percentage',0):.1f}%). Ask me what it means!"
+        st.info(context_note)
+
+    if not st.session_state.chat_messages:
+        st.markdown("#### Not sure what to ask? Try one of these:")
+        cols = st.columns(2)
+        for i, q in enumerate(STARTER_QUESTIONS):
+            with cols[i % 2]:
+                if st.button(q, key=f"starter_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("ABBot is thinking..."):
+                        context = build_context_message(st.session_state.predictions[-1]) if has_results else None
+                        msgs = st.session_state.chat_messages.copy()
+                        if context:
+                            msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+                        reply = chat_with_hf(msgs)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+    st.markdown("---")
+
+    for msg in st.session_state.chat_messages:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <div style="background:#3b82f6; color:white; padding:12px 16px; border-radius:16px 16px 4px 16px;
+                            max-width:75%; font-size:14px; line-height:1.6;">
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style="display:flex; justify-content:flex-start; margin-bottom:12px;">
+                <div style="background:#1e293b; border:1px solid #334155; color:#e2e8f0; padding:12px 16px;
+                            border-radius:16px 16px 16px 4px; max-width:80%; font-size:14px; line-height:1.7;">
+                    <span style="font-size:11px; color:#64748b; display:block; margin-bottom:4px;">ABBot</span>
+                    {msg['content']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("")
+    with st.form(key="chat_form", clear_on_submit=True):
+        col1, col2 = st.columns([5, 1])
+        with col1:
+            user_input = st.text_input(
+                "Message",
+                placeholder="Ask me anything about A/B testing, your results, statistics...",
+                label_visibility="collapsed"
+            )
+        with col2:
+            send = st.form_submit_button("Send", use_container_width=True, type="primary")
+
+    if send and user_input.strip():
+        st.session_state.chat_messages.append({"role": "user", "content": user_input.strip()})
+        with st.spinner("A/B testing LLM is thinking..."):
+            msgs = st.session_state.chat_messages.copy()
+            if has_results and len(msgs) == 1:
+                context = build_context_message(st.session_state.predictions[-1])
+                if context:
+                    msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+            reply = chat_with_hf(msgs)
+        st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+        st.rerun()
+
+    if st.session_state.chat_messages:
+        st.markdown("")
+        st.markdown("#### Quick follow-up questions:")
+        follow_ups = [
+            "Can you give me a concrete business example?",
+            "How do I explain this to a non-technical person?",
+            "What should I do next?",
+            "Can you make that simpler?",
+        ]
+        cols = st.columns(4)
+        for i, q in enumerate(follow_ups):
+            with cols[i]:
+                if st.button(q, key=f"followup_{i}", use_container_width=True):
+                    st.session_state.chat_messages.append({"role": "user", "content": q})
+                    with st.spinner("A/B testing LLM is thinking..."):
+                        reply = chat_with_hf(st.session_state.chat_messages)
+                    st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+                    st.rerun()
+
+
 st.divider()
 st.markdown("""
 <div style='text-align: center; color: #475569; font-size: 12px; padding: 10px;'>
     AB Testing Pro v2.0 | Built by Harsha | ML-Powered Analysis Platform
 </div>
 """, unsafe_allow_html=True)
+
