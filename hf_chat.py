@@ -5,7 +5,7 @@ import requests
 from typing import List, Dict, Optional
 
 HF_API_URL = "https://router.huggingface.co/v1/chat/completions"
-DEFAULT_MODEL = "meta-llama/Llama-3.2-3B-Instruct"
+DEFAULT_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 
 SYSTEM_PROMPT = """You are an expert A/B testing and data science advisor named ABBot, built into AB Testing Pro — a platform for running and understanding A/B experiments.
 
