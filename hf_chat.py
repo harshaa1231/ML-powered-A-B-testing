@@ -4,8 +4,7 @@ import os
 import requests
 from typing import List, Dict, Optional
 
-HF_API_URL = "https://router.huggingface.co/v1/chat/completions"
-DEFAULT_MODEL = "meta-llama/Llama-3.2-3B-Instruct"
+DEFAULT_MODEL = "microsoft/DialoGPT-medium"
 
 SYSTEM_PROMPT = """You are an expert A/B testing and data science advisor named ABBot, built into AB Testing Pro — a platform for running and understanding A/B experiments.
 
@@ -37,39 +36,51 @@ def chat_with_hf(
     if not token:
         return "HF_TOKEN environment variable not set. Please add your Hugging Face token to run the AI chat."
 
+    # Use the free Inference API endpoint
+    API_URL = f"https://api-inference.huggingface.co/models/{model}"
+    
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
 
-    full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
+    # Convert messages to prompt format for free models
+    conversation = ""
+    for msg in messages:
+        if msg["role"] == "user":
+            conversation += f"User: {msg['content']}\n"
+        elif msg["role"] == "assistant":
+            conversation += f"Assistant: {msg['content']}\n"
+    
+    prompt = f"{SYSTEM_PROMPT}\n\n{conversation}\nAssistant:"
 
     payload = {
-        "model": model,
-        "messages": full_messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": max_tokens,
+            "temperature": temperature,
+            "return_full_text": False,
+            "do_sample": True,
+        }
     }
 
     try:
-        # Fixed: Added proper timeout and error handling
-        r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
+        r = requests.post(API_URL, headers=headers, json=payload, timeout=60)
         
         if r.status_code == 200:
             data = r.json()
-            return data["choices"][0]["message"]["content"].strip()
-        elif r.status_code == 401:
-            return "Invalid Hugging Face token. Please check your HF_TOKEN secret."
-        elif r.status_code == 429:
-            return "Rate limit reached on Hugging Face. Please wait a moment and try again."
+            if isinstance(data, list) and len(data) > 0:
+                return data[0].get("generated_text", "I understand, but I'm having trouble formulating a complete response about A/B testing right now.").strip()
+            else:
+                return str(data)
         elif r.status_code == 503:
-            return "The AI model is currently loading — this can take 20-30 seconds on first use. Please try again in a moment."
+            return "The model is loading (this is normal for free models). Please try again in 10-15 seconds."
         else:
-            # Debug: Print the actual error response
-            print(f"API Error: {r.status_code} - {r.text}")
+            # Debug: Print the actual error
+            print(f"Debug - Error {r.status_code}: {r.text[:300]}")
             return f"Sorry, I couldn't get a response right now (error {r.status_code}). Please try again."
     except requests.Timeout:
-        return "The request timed out — the model may be loading. Please try again in a few seconds."
+        return "The request timed out — the free model may be loading. Please try again in a few seconds."
     except Exception as e:
         return f"Something went wrong: {str(e)}"
 
