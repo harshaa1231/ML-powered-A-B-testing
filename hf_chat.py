@@ -47,8 +47,9 @@ def chat_with_hf(
     payload = {
         "model": model,
         "messages": full_messages,
-        "max_tokens": max_tokens,
+        "max_new_tokens": max_tokens,
         "temperature": temperature,
+        "top_p": 0.9
     }
 
     try:
