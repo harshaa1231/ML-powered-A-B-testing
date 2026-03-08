@@ -52,7 +52,9 @@ def chat_with_hf(
     }
 
     try:
-        r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=45)
+        # Fixed: Added proper timeout and error handling
+        r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
+        
         if r.status_code == 200:
             data = r.json()
             return data["choices"][0]["message"]["content"].strip()
@@ -63,6 +65,8 @@ def chat_with_hf(
         elif r.status_code == 503:
             return "The AI model is currently loading — this can take 20-30 seconds on first use. Please try again in a moment."
         else:
+            # Debug: Print the actual error response
+            print(f"API Error: {r.status_code} - {r.text}")
             return f"Sorry, I couldn't get a response right now (error {r.status_code}). Please try again."
     except requests.Timeout:
         return "The request timed out — the model may be loading. Please try again in a few seconds."
