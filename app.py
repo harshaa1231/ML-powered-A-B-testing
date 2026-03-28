@@ -13,7 +13,7 @@ import plotly.express as px
 
 from statistical_tests import StatisticalTester
 from sample_data import SampleDataGenerator
-from hf_chat import chat_with_hf, build_context_message, STARTER_QUESTIONS
+from hf_chat import chat_with_llm as chat_with_hf, build_context_message, STARTER_QUESTIONS
 from ml_engine import UniversalMLEngine
 
 st.set_page_config(
