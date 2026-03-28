@@ -6,7 +6,6 @@ import requests
 import base64
 import pandas as pd
 from typing import List, Dict, Optional
-from hf_chat import chat_with_hf, build_context_message, build_file_context_message, parse_uploaded_file, STARTER_QUESTIONS
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
