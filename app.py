@@ -13,7 +13,7 @@ import plotly.express as px
 
 from statistical_tests import StatisticalTester
 from sample_data import SampleDataGenerator
-from hf_chat import chat_with_llm as chat_with_hf, build_context_message, STARTER_QUESTIONS
+from hf_chat import chat_with_hf, build_context_message, build_file_context_message, parse_uploaded_file, STARTER_QUESTIONS
 from ml_engine import UniversalMLEngine
 
 st.set_page_config(
@@ -1812,15 +1812,23 @@ elif page == "AI Chat":
     st.markdown('<div class="section-header">AI Chat — Ask Anything</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="help-box">
-        <p>Chat with <strong>ABBot</strong> — an AI assistant powered by Meta's Llama 3.2 model running on Hugging Face.
-        Ask anything about A/B testing, your results, statistics, or data science. It understands context from tests you've run in this session.</p>
+        <p>Chat with <strong>ABBot</strong> — an AI assistant powered by Llama 3.3 70B running on Groq.
+        Ask anything about A/B testing, your results, statistics, or data science.
+        <strong>You can also upload files</strong> (CSV, Excel, PDF, TXT, JSON) and ABBot will analyze them for you.</p>
     </div>
     """, unsafe_allow_html=True)
+
+    if 'chat_file_context' not in st.session_state:
+        st.session_state.chat_file_context = None
+    if 'chat_uploaded_filename' not in st.session_state:
+        st.session_state.chat_uploaded_filename = None
 
     col1, col2 = st.columns([3, 1])
     with col2:
         if st.button("Clear Chat", width='stretch'):
             st.session_state.chat_messages = []
+            st.session_state.chat_file_context = None
+            st.session_state.chat_uploaded_filename = None
             st.rerun()
 
     has_results = len(st.session_state.predictions) > 0
@@ -1828,6 +1836,56 @@ elif page == "AI Chat":
         latest = st.session_state.predictions[-1]
         context_note = f"💡 I can see your latest test result (p={latest.get('p_value',1):.4f}, uplift={latest.get('uplift_percentage',0):.1f}%). Ask me what it means!"
         st.info(context_note)
+
+    st.markdown("#### Upload a file for analysis (optional)")
+    chat_file = st.file_uploader(
+        "Drop a file here and ABBot will analyze it",
+        type=['csv', 'xlsx', 'xls', 'pdf', 'txt', 'md', 'json', 'png', 'jpg', 'jpeg'],
+        key="chat_file_upload",
+        help="Supported: CSV, Excel, PDF, TXT, JSON, images. The file content will be sent to the AI for analysis."
+    )
+
+    if chat_file is not None and chat_file.name != st.session_state.chat_uploaded_filename:
+        with st.spinner(f"Reading {chat_file.name}..."):
+            parsed = parse_uploaded_file(chat_file)
+
+        if parsed['error']:
+            st.error(parsed['error'])
+        else:
+            st.session_state.chat_uploaded_filename = chat_file.name
+            st.session_state.chat_file_context = parsed['summary']
+
+            st.success(f"✅ **{chat_file.name}** loaded! ABBot can now answer questions about this file.")
+
+            if parsed['dataframe'] is not None:
+                with st.expander("File Preview", expanded=False):
+                    st.dataframe(parsed['dataframe'].head(10), use_container_width=True)
+                st.caption(f"{parsed['dataframe'].shape[0]} rows × {parsed['dataframe'].shape[1]} columns")
+
+            auto_msg = f"I just uploaded a file called **{chat_file.name}**. Please analyze it and tell me what you see — key stats, patterns, and any recommendations."
+            st.session_state.chat_messages.append({"role": "user", "content": auto_msg})
+
+            with st.spinner("ABBot is analyzing your file..."):
+                msgs = st.session_state.chat_messages.copy()
+                file_context = build_file_context_message(parsed['summary'])
+                msgs = [
+                    {"role": "user", "content": file_context},
+                    {"role": "assistant", "content": "I've loaded your file and I'm ready to analyze it. Let me look at the data."}
+                ] + msgs
+                reply = chat_with_hf(msgs)
+
+            st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+            st.rerun()
+
+    if st.session_state.chat_uploaded_filename:
+        st.markdown(f"""
+        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);
+                    border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; font-size: 13px;">
+            📎 <strong>{st.session_state.chat_uploaded_filename}</strong> is loaded — ask any questions about this file
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
 
     if not st.session_state.chat_messages:
         st.markdown("#### Not sure what to ask? Try one of these:")
@@ -1841,11 +1899,12 @@ elif page == "AI Chat":
                         msgs = st.session_state.chat_messages.copy()
                         if context:
                             msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+                        if st.session_state.chat_file_context:
+                            file_ctx = build_file_context_message(st.session_state.chat_file_context)
+                            msgs = [{"role": "user", "content": file_ctx}, {"role": "assistant", "content": "I have your file loaded and ready to reference."}] + msgs
                         reply = chat_with_hf(msgs)
                     st.session_state.chat_messages.append({"role": "assistant", "content": reply})
                     st.rerun()
-
-    st.markdown("---")
 
     for msg in st.session_state.chat_messages:
         if msg["role"] == "user":
@@ -1874,7 +1933,7 @@ elif page == "AI Chat":
         with col1:
             user_input = st.text_input(
                 "Message",
-                placeholder="Ask me anything about A/B testing, your results, statistics...",
+                placeholder="Ask me anything about A/B testing, your results, or the uploaded file...",
                 label_visibility="collapsed"
             )
         with col2:
@@ -1888,6 +1947,9 @@ elif page == "AI Chat":
                 context = build_context_message(st.session_state.predictions[-1])
                 if context:
                     msgs = [{"role": "user", "content": context}, {"role": "assistant", "content": "Understood. I'll keep those results in mind when answering your questions."}] + msgs
+            if st.session_state.chat_file_context:
+                file_ctx = build_file_context_message(st.session_state.chat_file_context)
+                msgs = [{"role": "user", "content": file_ctx}, {"role": "assistant", "content": "I have your file loaded and ready to reference."}] + msgs
             reply = chat_with_hf(msgs)
         st.session_state.chat_messages.append({"role": "assistant", "content": reply})
         st.rerun()
@@ -1895,22 +1957,33 @@ elif page == "AI Chat":
     if st.session_state.chat_messages:
         st.markdown("")
         st.markdown("#### Quick follow-up questions:")
-        follow_ups = [
-            "Can you give me a concrete business example?",
-            "How do I explain this to a non-technical person?",
-            "What should I do next?",
-            "Can you make that simpler?",
-        ]
+        if st.session_state.chat_file_context:
+            follow_ups = [
+                "What patterns do you see in this data?",
+                "Is this good A/B test data? What should I test?",
+                "What are the key metrics I should focus on?",
+                "Can you summarize the main findings?",
+            ]
+        else:
+            follow_ups = [
+                "Can you give me a concrete business example?",
+                "How do I explain this to a non-technical person?",
+                "What should I do next?",
+                "Can you make that simpler?",
+            ]
         cols = st.columns(4)
         for i, q in enumerate(follow_ups):
             with cols[i]:
                 if st.button(q, key=f"followup_{i}", use_container_width=True):
                     st.session_state.chat_messages.append({"role": "user", "content": q})
                     with st.spinner("ABBot is thinking..."):
-                        reply = chat_with_hf(st.session_state.chat_messages)
+                        msgs = st.session_state.chat_messages.copy()
+                        if st.session_state.chat_file_context:
+                            file_ctx = build_file_context_message(st.session_state.chat_file_context)
+                            msgs = [{"role": "user", "content": file_ctx}, {"role": "assistant", "content": "I have your file loaded."}] + msgs
+                        reply = chat_with_hf(msgs)
                     st.session_state.chat_messages.append({"role": "assistant", "content": reply})
                     st.rerun()
-
 
 st.divider()
 st.markdown("""
