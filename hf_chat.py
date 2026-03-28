@@ -4,8 +4,8 @@ import os
 import requests
 from typing import List, Dict, Optional
 
-HF_API_URL = "https://router.huggingface.co/v1/chat/completions"
-DEFAULT_MODEL = "meta-llama/Llama-3.2-3B-Instruct"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+DEFAULT_MODEL = "llama-3.3-70b-versatile"
 
 SYSTEM_PROMPT = """You are an expert A/B testing and data science advisor named ABBot, built into AB Testing Pro — a platform for running and understanding A/B experiments.
 
@@ -27,15 +27,15 @@ Guidelines:
 """
 
 
-def chat_with_hf(
+def chat_with_llm(
     messages: List[Dict[str, str]],
     model: str = DEFAULT_MODEL,
     max_tokens: int = 600,
     temperature: float = 0.7,
 ) -> str:
-    token = os.environ.get("HF_TOKEN", "")
+    token = os.environ.get("GROQ_API_KEY", "")
     if not token:
-        return "HF_TOKEN environment variable not set. Please add your Hugging Face token to run the AI chat."
+        return "GROQ_API_KEY not set. Please add your Groq API key to Streamlit secrets."
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -52,20 +52,18 @@ def chat_with_hf(
     }
 
     try:
-        r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=45)
+        r = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=30)
         if r.status_code == 200:
             data = r.json()
             return data["choices"][0]["message"]["content"].strip()
         elif r.status_code == 401:
-            return "Invalid Hugging Face token. Please check your HF_TOKEN secret."
+            return "Invalid Groq API key. Please check your GROQ_API_KEY secret."
         elif r.status_code == 429:
-            return "Rate limit reached on Hugging Face. Please wait a moment and try again."
-        elif r.status_code == 503:
-            return "The AI model is currently loading — this can take 20-30 seconds on first use. Please try again in a moment."
+            return "Rate limit reached. Please wait a moment and try again."
         else:
             return f"Sorry, I couldn't get a response right now (error {r.status_code}). Please try again."
     except requests.Timeout:
-        return "The request timed out — the model may be loading. Please try again in a few seconds."
+        return "The request timed out. Please try again."
     except Exception as e:
         return f"Something went wrong: {str(e)}"
 
