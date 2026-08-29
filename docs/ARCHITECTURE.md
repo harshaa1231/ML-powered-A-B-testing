@@ -55,7 +55,7 @@ This is a deliberately lightweight async-job pattern (DB-tracked status + `Backg
 ## Request flow: the RAG chat assistant (ABBot)
 
 1. User asks a question, optionally with an `experiment_id` to ground the answer in a specific result.
-2. `app/rag/embeddings.py` embeds the question locally with `sentence-transformers/all-MiniLM-L6-v2` — no external API call, no cost.
+2. `app/rag/embeddings.py` embeds the question locally with `fastembed` running `sentence-transformers/all-MiniLM-L6-v2` on ONNX runtime — no external API call, no cost, and roughly half the memory footprint of the equivalent PyTorch model (~270MB peak vs. ~540MB), which matters on a memory-constrained free-tier deploy.
 3. `app/rag/vector_store.py` runs a cosine-similarity search over `kb_chunks.embedding` (a pgvector column in the same Postgres instance — no separate vector DB service) and returns the top-k matching chunks from the knowledge base under `app/rag/knowledge_base/*.md`.
 4. `app/rag/retriever.py` builds a context message combining the retrieved KB chunks and (if provided) the live experiment's stats results, then calls `app/rag/llm_client.py`, which sends the conversation to Groq's free-tier `openai/gpt-oss-120b` model.
 5. The answer and the retrieved chunk citations are persisted to `chat_messages` and returned to the frontend, which can display "sources" next to the answer.
@@ -66,7 +66,7 @@ The knowledge base is ingested automatically on first backend startup (`main.py`
 
 - **pgvector instead of a separate vector DB** (Pinecone, Chroma, Weaviate): one fewer service to run/pay for/monitor. Supabase, Render, Neon, and Fly Postgres all support the `vector` extension, so this doesn't limit deployment options.
 - **Groq instead of OpenAI/Anthropic for generation**: free tier, fast inference, OpenAI-compatible-ish chat API — the right tradeoff for a project where cost needs to be zero.
-- **sentence-transformers instead of a hosted embeddings API**: also free, runs in-process, no API key or per-call cost, and 384-dim embeddings are cheap to store/query even at KB scale.
+- **fastembed instead of sentence-transformers or a hosted embeddings API**: also free and runs in-process, but on ONNX runtime rather than full PyTorch — same model, same 384-dim output, roughly half the memory footprint, which is the difference between fitting comfortably in a 512MB free-tier instance and reliably OOM-crashing on one.
 - **FastAPI BackgroundTasks instead of Celery/Redis**: the training workload is bursty and modest — a dedicated broker and worker fleet would be pure overhead here. The DB-tracked-status pattern is the same shape a queue-backed system uses, so it's not a dead end if the project outgrows it.
 - **Local-disk storage behind a `FileStorage` protocol**: keeps day-one infra to "one Postgres, one backend, one frontend." The interface is deliberately narrow (`save_bytes`/`read_bytes`/`new_key`) so an S3-compatible implementation is a single new class, not a rewrite.
 

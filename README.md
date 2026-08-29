@@ -23,7 +23,7 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full system design, r
 | Backend | FastAPI, SQLAlchemy 2.0 (async), Alembic, Pydantic v2 |
 | Database | Postgres + pgvector (tested against Supabase; also works on Render/Neon/Fly) |
 | ML/Stats | scikit-learn, SciPy, pandas |
-| GenAI | Groq (`openai/gpt-oss-120b`, free tier) + `sentence-transformers` (local, free embeddings) |
+| GenAI | Groq (`openai/gpt-oss-120b`, free tier) + `fastembed` (local, free, ONNX-runtime embeddings) |
 | Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS, Recharts |
 | Auth | JWT (signup/login), bcrypt password hashing |
 | Infra | Docker Compose (local), Render/Fly + Vercel (cloud) |

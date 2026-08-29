@@ -28,7 +28,9 @@ openpyxl==3.1.5
 pyarrow==18.1.0
 
 # RAG
-sentence-transformers==3.3.1
+# fastembed (ONNX runtime) instead of sentence-transformers (full PyTorch): ~270MB peak RSS
+# vs ~540MB for the same model, which matters on a 512MB free-tier deploy target.
+fastembed==0.8.0
 groq==0.13.1
 
 # Testing / tooling
