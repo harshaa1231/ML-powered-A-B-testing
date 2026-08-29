@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.models.user import User
 from app.schemas.auth import LoginRequest, SignupRequest, TokenResponse, UserResponse
@@ -10,7 +11,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
+@limiter.limit("20/hour")
+async def signup(request: Request, payload: SignupRequest, db: DbSession) -> TokenResponse:
     # (email, persona) is the account identity, not email alone — the same email can hold
     # a separate business account and learner account, each with its own password and data.
     existing = (
@@ -36,7 +38,8 @@ async def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
+@limiter.limit("10/minute")
+async def login(request: Request, payload: LoginRequest, db: DbSession) -> TokenResponse:
     user = (
         await db.execute(select(User).where(User.email == payload.email, User.persona == payload.persona))
     ).scalar_one_or_none()

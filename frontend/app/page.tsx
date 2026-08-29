@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Button, Card } from "@/components/ui";
 import { ABTestDemo } from "@/components/ABTestDemo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const FEATURES = [
   {
@@ -85,7 +86,8 @@ export default function LandingPage() {
           </div>
           <span className="text-sm font-semibold tracking-tight">AB Testing Pro</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
           <Link href="/login">
             <Button variant="ghost" size="sm">
               Sign in

@@ -23,12 +23,21 @@ from sqlalchemy.pool import NullPool
 
 from app.api.deps import get_db
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db.models import *  # noqa: F401,F403 - register all models on Base.metadata
 from app.main import app
 
 settings = get_settings()
 
 APP_TABLES = ["chat_messages", "chat_sessions", "ml_runs", "experiments", "users"]
+
+# Every test using the `client` fixture shares one ASGITransport against the same
+# module-level `app`, so slowapi's in-memory counters accumulate across the whole
+# pytest session under one key (ASGITransport has no real client IP). Left enabled,
+# unrelated tests later in the run would start failing once earlier tests' signups/
+# logins exhausted the limit. test_api_auth.py's own rate-limit test re-enables it
+# for the duration of its one assertion.
+limiter.enabled = False
 
 
 def _db_is_reachable() -> bool:

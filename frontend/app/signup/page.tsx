@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { Button, Card, FadeIn, Input, Label } from "@/components/ui";
 import { PersonaSelector } from "@/components/PersonaSelector";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import type { Persona } from "@/lib/types";
 
 function SignupForm() {
@@ -90,6 +91,7 @@ export default function SignupPage() {
         style={{ background: "radial-gradient(circle, var(--accent), transparent 70%)" }}
         aria-hidden
       />
+      <ThemeToggle className="absolute right-6 top-6" />
       <Suspense fallback={null}>
         <SignupForm />
       </Suspense>

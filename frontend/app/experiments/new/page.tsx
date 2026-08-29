@@ -33,6 +33,11 @@ export default function NewExperimentPage() {
           </button>
         ))}
       </div>
+      <p className="mt-2 max-w-2xl text-xs text-muted">
+        {mode === "simple"
+          ? "Just the headline number — control vs. treatment counts, no dataset needed."
+          : "Upload a CSV to add guardrail metrics, a full Scorecard, and auto-detected columns — we'll even suggest which ones look like guardrails."}
+      </p>
 
       <div className="mt-6 max-w-2xl">{mode === "simple" ? <SimpleTestForm /> : <AdvancedTestForm />}</div>
     </AppShell>

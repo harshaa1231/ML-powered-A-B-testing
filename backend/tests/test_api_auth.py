@@ -1,3 +1,4 @@
+from app.core.limiter import limiter
 from tests.conftest import requires_db
 
 
@@ -73,3 +74,21 @@ async def test_login_with_wrong_persona_for_existing_account_rejected(client) ->
 async def test_me_requires_auth(client) -> None:
     resp = await client.get("/api/auth/me")
     assert resp.status_code == 401
+
+
+@requires_db
+async def test_login_rate_limit_blocks_excessive_attempts(client) -> None:
+    """Brute-forcing a password should get throttled, not answered forever. Rate
+    limiting is disabled globally for the rest of the suite (see conftest.py) since
+    every test shares one IP bucket against the same app instance — re-enabled here
+    for just this one assertion, against its own fresh counter."""
+    limiter.enabled = True
+    limiter.reset()
+    try:
+        payload = {"email": "nobody@example.com", "password": "wrong-password", "persona": "business"}
+        statuses = [(await client.post("/api/auth/login", json=payload)).status_code for _ in range(11)]
+        assert statuses[:10] == [401] * 10
+        assert statuses[10] == 429
+    finally:
+        limiter.reset()
+        limiter.enabled = False

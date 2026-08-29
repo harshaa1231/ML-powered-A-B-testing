@@ -112,14 +112,19 @@ Also out of scope for the same reason (focus over breadth): multi-armed bandits,
 - **FastAPI BackgroundTasks instead of Celery/Redis**: the training workload is bursty and modest — a dedicated broker and worker fleet would be pure overhead here. The DB-tracked-status pattern is the same shape a queue-backed system uses, so it's not a dead end if the project outgrows it.
 - **Local-disk storage behind a `FileStorage` protocol**: keeps day-one infra to "one Postgres, one backend, one frontend." The interface is deliberately narrow (`save_bytes`/`read_bytes`/`new_key`) so an S3-compatible implementation is a single new class, not a rewrite.
 
+## Auth hardening
+
+- **Login and signup are rate-limited** per IP via `slowapi` (`app/core/limiter.py`) — 10 login attempts/minute, 20 signups/hour — to blunt brute-force and spam-signup attempts without tripping on realistic use (one person creating both a business and a learner account, or retrying a typo). In-memory storage is sufficient since the free-tier deploy target runs a single process, not a multi-instance fleet that would need shared external state. `backend/tests/test_api_auth.py::test_login_rate_limit_blocks_excessive_attempts` exercises the actual 429 response; the limiter is disabled for the rest of the suite (see `conftest.py`) since every other test shares one IP bucket against the same app instance.
+- **Password reset is not yet built.** It needs an actual outbound email provider (Resend, Brevo, or SMTP) to deliver the reset link, which is an external account this repo doesn't assume you have — the mechanism (a hashed, expiring reset token) is straightforward to add once a provider is chosen; it's deferred specifically on that choice, not overlooked.
+
 ## Explicitly out of scope (documented, not built)
 
-- OAuth/social login, email verification, password reset flows
+- OAuth/social login, email verification
 - Billing/subscriptions, multi-tenant organizations
 - S3/object storage (the storage layer is ready for it; not wired up)
 - Celery/Redis job queue
 - Kubernetes manifests
-- End-to-end browser tests (Playwright/Cypress)
+- End-to-end browser tests (Playwright/Cypress) — extensive manual Playwright verification was done during development, but no such suite is checked in or run in CI yet
 
 These were cut deliberately to keep the rewrite's scope achievable while still being a real, deployable product — not because they're hard to imagine adding later.
 

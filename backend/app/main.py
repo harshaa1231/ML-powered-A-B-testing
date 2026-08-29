@@ -2,10 +2,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 
 from app.api.routes import analytics, auth, chat, datasets, experiments, ml, practice
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.db.models.kb_document import KBDocument
 from app.db.session import AsyncSessionLocal
 from app.rag.ingest import ingest_knowledge_base
@@ -23,6 +27,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

@@ -32,7 +32,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #08090d;
     --foreground: #f4f5f7;
     --surface: #101218;
@@ -46,6 +46,23 @@
     --danger: #fb7185;
     --ring: rgba(167, 139, 250, 0.35);
   }
+}
+
+/* Explicit user choice (persisted in localStorage, applied via a pre-hydration
+   script in layout.tsx) always wins over the system preference above. */
+:root[data-theme="dark"] {
+  --background: #08090d;
+  --foreground: #f4f5f7;
+  --surface: #101218;
+  --surface-2: #15171f;
+  --surface-border: #22252f;
+  --muted: #8b8fa3;
+  --accent: #a78bfa;
+  --accent-2: #818cf8;
+  --accent-foreground: #08090d;
+  --success: #34d399;
+  --danger: #fb7185;
+  --ring: rgba(167, 139, 250, 0.35);
 }
 
 * {

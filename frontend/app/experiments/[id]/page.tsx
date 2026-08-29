@@ -6,6 +6,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import {
   AlertTriangle,
   CheckCircle2,
+  LayoutGrid,
   MessageCircle,
   ShieldCheck,
   Sparkles,
@@ -152,7 +153,7 @@ function ExperimentDetail({ experiment }: { experiment: Experiment }) {
         </FadeIn>
       )}
 
-      {r.guardrails && r.guardrails.length > 0 && (
+      {r.guardrails && r.guardrails.length > 0 ? (
         <FadeIn delay={0.12}>
           <Card className="mt-6">
             <h3 className="mb-4 text-sm font-medium">Scorecard</h3>
@@ -161,6 +162,29 @@ function ExperimentDetail({ experiment }: { experiment: Experiment }) {
               {r.guardrails.map((g) => (
                 <ScorecardRow key={g.metric} label={g.metric} result={g} />
               ))}
+            </div>
+          </Card>
+        </FadeIn>
+      ) : (
+        <FadeIn delay={0.12}>
+          <Card className="mt-6 border-dashed">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                <LayoutGrid className="h-4 w-4 text-accent" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium">This result only has the headline number</h3>
+                <p className="mt-1 text-sm text-muted">
+                  A Scorecard — your primary metric plus the guardrails you can&apos;t afford to break (latency, churn,
+                  cost) — needs an Advanced analysis with your own dataset. We&apos;ll even suggest which columns look
+                  like guardrails.
+                </p>
+                <Link href="/experiments/new">
+                  <Button variant="secondary" size="sm" className="mt-3">
+                    Run an advanced analysis
+                  </Button>
+                </Link>
+              </div>
             </div>
           </Card>
         </FadeIn>
