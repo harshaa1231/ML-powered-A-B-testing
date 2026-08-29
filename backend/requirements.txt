@@ -1,0 +1,38 @@
+# Core API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
+alembic==1.14.0
+pgvector==0.3.6
+greenlet==3.1.1
+
+# Auth
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+python-multipart==0.0.20
+
+# Data / ML (ported engines)
+pandas==2.2.3
+numpy==2.2.1
+scipy==1.14.1
+scikit-learn==1.6.0
+joblib==1.4.2
+openpyxl==3.1.5
+pyarrow==18.1.0
+
+# RAG
+sentence-transformers==3.3.1
+groq==0.13.1
+
+# Testing / tooling
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1
+ruff==0.8.4

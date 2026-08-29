@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# Session-scoped so every test shares one event loop — the async engine in app/db/session.py
+# is a module-level singleton whose pooled asyncpg connections are bound to whichever loop
+# created them; per-function loops (the default) cause "attached to a different loop" errors
+# on the second test that reuses a pooled connection.
+asyncio_default_fixture_loop_scope = "session"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

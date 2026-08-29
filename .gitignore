@@ -1,0 +1,22 @@
+# Env files (never commit secrets)
+.env
+backend/.env
+frontend/.env*.local
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+backend/storage/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
