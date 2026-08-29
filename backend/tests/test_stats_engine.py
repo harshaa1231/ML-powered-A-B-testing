@@ -66,3 +66,21 @@ def test_chi_square_test_on_binary_outcomes(tester: StatisticalTester) -> None:
 def test_recommend_test_uses_metric_type(tester: StatisticalTester) -> None:
     assert tester.recommend_test([], [], metric_type="categorical") == "chi_square"
     assert tester.recommend_test([], [], metric_type="continuous") == "ttest"
+
+
+def test_sample_ratio_mismatch_passes_on_balanced_split() -> None:
+    result = StatisticalTester.sample_ratio_mismatch(control_n=5000, treatment_n=5012)
+    assert result["passed"] is True
+    assert result["p_value"] > 0.01
+
+
+def test_sample_ratio_mismatch_flags_skewed_split() -> None:
+    result = StatisticalTester.sample_ratio_mismatch(control_n=4000, treatment_n=6000)
+    assert result["passed"] is False
+    assert result["p_value"] < 0.01
+
+
+def test_sample_ratio_mismatch_handles_empty_groups() -> None:
+    result = StatisticalTester.sample_ratio_mismatch(control_n=0, treatment_n=0)
+    assert result["passed"] is True
+    assert result["p_value"] == 1.0

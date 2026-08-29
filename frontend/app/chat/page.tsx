@@ -1,18 +1,12 @@
 "use client";
 
-import { Suspense, useRef, useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { Badge, Button, Input, Spinner } from "@/components/ui";
-import { ApiError, sendChatMessage } from "@/lib/api";
-import type { ChatSource } from "@/lib/types";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  sources?: ChatSource[];
-}
+import { useChatSession } from "@/lib/useChatSession";
+import { Button, GroundedIn, Input, Markdown, Spinner } from "@/components/ui";
 
 const BUSINESS_STARTERS = [
   "Is this result ready to ship?",
@@ -30,40 +24,24 @@ const LEARNER_STARTERS = [
   "What is uplift modeling and when should I use it?",
 ];
 
+const QUIZ_ME_PROMPT =
+  "Quiz me: ask me one multiple-choice question about A/B testing (four options, labeled A-D). " +
+  "Don't reveal the answer yet — wait for me to reply with my chosen letter, then tell me if I got it right and explain why.";
+
 function ChatPageInner() {
   const searchParams = useSearchParams();
   const experimentId = searchParams.get("experiment_id") ?? undefined;
   const { user } = useAuth();
   const starterQuestions = user?.persona === "learner" ? LEARNER_STARTERS : BUSINESS_STARTERS;
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, sending, error, send, scrollRef } = useChatSession(experimentId);
   const [input, setInput] = useState("");
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  async function send(text: string) {
-    if (!text.trim()) return;
-    setError(null);
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setInput("");
-    setSending(true);
-    try {
-      const response = await sendChatMessage(text, sessionId, experimentId);
-      setSessionId(response.session_id);
-      setMessages((prev) => [...prev, { role: "assistant", content: response.content, sources: response.sources }]);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setSending(false);
-      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-    }
-  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    send(input);
+    const text = input;
+    setInput("");
+    send(text);
   }
 
   return (
@@ -88,6 +66,13 @@ function ChatPageInner() {
                   {q}
                 </button>
               ))}
+              <button
+                onClick={() => send(QUIZ_ME_PROMPT)}
+                className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent hover:border-accent"
+              >
+                <Sparkles className="h-3 w-3" />
+                Quiz me
+              </button>
             </div>
           )}
 
@@ -98,14 +83,12 @@ function ChatPageInner() {
                   m.role === "user" ? "bg-accent text-accent-foreground" : "bg-background/60"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{m.content}</p>
-                {m.sources && m.sources.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {m.sources.map((s) => (
-                      <Badge key={s.slug}>{s.title}</Badge>
-                    ))}
-                  </div>
+                {m.role === "assistant" ? (
+                  <Markdown>{m.content}</Markdown>
+                ) : (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
                 )}
+                {m.role === "assistant" && <GroundedIn sources={m.sources ?? []} />}
               </div>
             </div>
           ))}

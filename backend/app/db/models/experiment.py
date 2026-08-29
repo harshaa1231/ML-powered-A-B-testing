@@ -22,6 +22,7 @@ class Experiment(Base, UUIDPKMixin, TimestampMixin):
     mode: Mapped[str] = mapped_column(String(20), nullable=False)  # "simple" | "advanced"
     domain: Mapped[str] = mapped_column(String(50), default="general")
     test_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    hypothesis: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     group_col: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metric_col: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

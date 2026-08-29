@@ -1,9 +1,12 @@
 import type {
+  AnalyticsOverview,
   ChatHistoryMessage,
   ChatMessageResponse,
   Experiment,
+  ExperimentResult,
   MLRun,
   Persona,
+  PracticeFeedbackResponse,
   SampleDatasetDetail,
   SampleDatasetSummary,
   User,
@@ -65,10 +68,10 @@ export function signup(email: string, password: string, persona: Persona, fullNa
   });
 }
 
-export function login(email: string, password: string) {
+export function login(email: string, password: string, persona: Persona) {
   return request<{ access_token: string }>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, persona }),
   });
 }
 
@@ -82,6 +85,7 @@ export interface SimpleTestPayload {
   name: string;
   metric_type: "conversion" | "continuous";
   domain?: string;
+  hypothesis?: string;
   control_conversions?: number;
   control_total?: number;
   treatment_conversions?: number;
@@ -100,9 +104,11 @@ export function runSimpleTest(payload: SimpleTestPayload) {
 export interface AdvancedTestPayload {
   name: string;
   domain?: string;
+  hypothesis?: string;
   group_col: string;
   metric_col: string;
   test_type?: "auto" | "ttest" | "chi_square" | "mann_whitney";
+  guardrail_cols?: string[];
   rows: Record<string, unknown>[];
 }
 
@@ -190,4 +196,19 @@ export function sendChatMessage(message: string, sessionId?: string, experimentI
 
 export function getChatHistory(sessionId: string) {
   return request<ChatHistoryMessage[]>(`/api/chat/sessions/${sessionId}/history`);
+}
+
+// --- Practice Lab ---
+
+export function submitPracticeFeedback(scenarioName: string, learnerConclusion: string, results: ExperimentResult) {
+  return request<PracticeFeedbackResponse>("/api/practice/feedback", {
+    method: "POST",
+    body: JSON.stringify({ scenario_name: scenarioName, learner_conclusion: learnerConclusion, results }),
+  });
+}
+
+// --- Analytics ---
+
+export function getAnalyticsOverview() {
+  return request<AnalyticsOverview>("/api/analytics/overview");
 }

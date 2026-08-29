@@ -2,8 +2,11 @@
 
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import type { ChatSource } from "@/lib/types";
 
 export function Card({
   children,
@@ -167,6 +170,51 @@ export function EmptyState({
       <p className="font-medium">{title}</p>
       <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>
       {action && <div className="mt-5">{action}</div>}
+    </div>
+  );
+}
+
+/** The "visual confidence indicator" pattern: distinguishes an answer grounded in
+ * retrieved knowledge-base content from one the model produced from general
+ * reasoning alone, instead of burying that distinction in a small badge row. */
+export function GroundedIn({ sources }: { sources: ChatSource[] }) {
+  if (sources.length === 0) {
+    return (
+      <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-surface-border" />
+        General reasoning — not grounded in a specific document
+      </div>
+    );
+  }
+
+  const unique = Array.from(new Map(sources.map((s) => [s.slug, s])).values());
+
+  return (
+    <div className="mt-2 rounded-lg border border-accent/20 bg-accent/5 px-2.5 py-2">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-accent">
+        <BookOpen className="h-3 w-3" />
+        Grounded in the knowledge base
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {unique.map((s) => (
+          <span key={s.slug} className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted">
+            {s.title}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Renders LLM/RAG output (chat replies, AI summaries, practice feedback, trends
+ * narratives) as formatted Markdown instead of literal `###`/`**`/`|table|` text —
+ * every one of those surfaces returns real Markdown from the model. */
+export function Markdown({ children, className = "" }: { children: string; className?: string }) {
+  return (
+    <div
+      className={`space-y-2.5 text-sm leading-relaxed text-foreground [&_a]:text-accent [&_a]:underline [&_code]:rounded [&_code]:bg-surface-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px] [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:uppercase [&_h3]:tracking-wide [&_h3]:text-muted [&_hr]:border-surface-border [&_li]:ml-4 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:my-0 [&_strong]:font-semibold [&_strong]:text-foreground [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-surface-border [&_td]:px-2.5 [&_td]:py-1.5 [&_th]:border [&_th]:border-surface-border [&_th]:bg-surface-2 [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left [&_ul]:list-disc [&_ul]:space-y-1 ${className}`}
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
     </div>
   );
 }

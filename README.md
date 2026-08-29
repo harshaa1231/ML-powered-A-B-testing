@@ -1,20 +1,36 @@
 # AB Testing Pro
 
-A full-stack A/B testing and experimentation platform: statistical testing, ML-powered uplift modeling, and a retrieval-augmented AI assistant grounded in both a curated knowledge base and your own live experiment results.
+A full-stack experimentation platform with two distinct products in one codebase: a **Statsig-style experimentation workspace** for practitioners, and a **gamified, hands-on A/B testing course** for people learning the subject — both grounded in the same retrieval-augmented AI assistant (ABBot) and the same real statistics engine.
 
-This is a from-scratch rewrite of an earlier single-file Streamlit prototype (preserved for reference under [`legacy-streamlit/`](legacy-streamlit/)) into a real product: a FastAPI backend with persistent Postgres storage, a Next.js frontend, and a Groq-powered RAG chat assistant — all running on free-tier infrastructure.
+This is a from-scratch rewrite of an earlier single-file Streamlit prototype (preserved for reference under [`legacy-streamlit/`](legacy-streamlit/)) into a real product: a FastAPI backend with persistent Postgres storage, a Next.js frontend, and a Groq-powered RAG assistant threaded through four separate surfaces — all running on free-tier infrastructure.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full system design, request flows, and the reasoning behind each infra choice.
 
-## Features
+## Two products, two accounts
 
-- **Statistical testing** — Welch's t-test, Mann-Whitney U, chi-square, and two-proportion z-tests, with the right test auto-recommended from your data.
-- **ML Model Studio** — trains Gradient Boosting and Random Forest models (classification or regression, auto-detected), compares them, and reports feature importance.
-- **Uplift modeling** — a T-learner estimates each user's individual treatment effect, so you can see who actually benefits instead of just the average effect.
-- **Persistent experiment history** — every test and trained model is saved per-user in Postgres (the original prototype reset on every session).
-- **ABBot: a real RAG assistant** — retrieves from a 13-document A/B testing knowledge base (pgvector similarity search over locally-computed embeddings) and, when relevant, your own live experiment numbers, then answers via Groq's free-tier `openai/gpt-oss-120b`.
-- **Background ML training** — training runs as an async job with DB-tracked status, not blocking the request.
-- **Sample datasets + synthetic data generator** — six pre-built industry datasets, plus a generator for larger, more realistic synthetic data per domain.
+Signing up asks whether you're **Business** or **Learner** — this isn't a cosmetic toggle. Business and learner are separate accounts enforced at the database level (a composite `(email, persona)` unique constraint, not a mutable flag on one account), so the same email address can hold both, independently. This is deliberate: it's what makes different pricing per persona possible later without a data migration.
+
+### Business — the experimentation workspace
+
+- **Hypothesis-first experiment creation** — a templated "we believe that ___ will ___ because ___" field, shown prominently on every result.
+- **Sample Ratio Mismatch (SRM) health check** — a real chi-square goodness-of-fit test that runs automatically on every experiment and flags broken randomization before you trust the result.
+- **Guardrail metrics / Scorecard** — pick secondary metrics (latency, churn, cost) alongside your primary one; each gets its own test result in a scorecard, and the column picker proactively suggests likely guardrail columns from your data.
+- **A real Experiments list** — sortable, filterable, separate from a lightweight Program Overview (KPI tiles, weekly trend, most-used test types).
+- **RAG-grounded AI Summary** on every result — not a bare model call. It retrieves the relevant knowledge-base doc for the specific test type and health-check outcome, and is fed the actual computed numbers (group rates/means, guardrail results) so it explains *this* experiment, not a generic one.
+- **ABBot, ambient** — a floating assistant available on every page, not a separate destination. Opened from an experiment, it already has that experiment's numbers in context.
+
+### Learner — an actually interactive course, not static text
+
+- **Skill tree** — a dependency-gated map (Foundational → Core → Advanced → Case Studies) instead of a flat scrolling article, with locked/unlocked/completed states.
+- **Interactive sample-size calculator** and **significance simulator** — drag sliders, watch the real math (the same two-proportion z-test the backend runs) update live.
+- **Inline quizzes** with instant feedback, and **streaks + XP** tracked locally per device.
+- **Real-world case studies**, including one built on a real, published mobile-game retention experiment (Cookie Cats) — form a conclusion before the reveal, same as the actual Practice Lab flow.
+- **Practice Lab** — pick a real sample dataset, state your conclusion, run the actual statistical test, then get RAG-grounded feedback from ABBot that's fed your real result (not a canned answer, and not free to invent numbers it wasn't given).
+- **Searchable glossary** and a **"Quiz me"** starter prompt that reuses the same chat pipeline, no bespoke quiz backend.
+
+### Where RAG actually runs
+
+One retrieval pipeline (`app/rag/retriever.py`), reused across four surfaces rather than sprinkled everywhere for appearance: **chat**, **experiment AI summaries**, **Practice Lab feedback**, and **Program Analytics trends**. Each call is grounded both in the curated knowledge base (pgvector similarity search) and in the real numbers for that specific situation — the context builder forwards every number the stats engine actually computed and explicitly instructs the model never to invent metrics beyond what it's given.
 
 ## Tech stack
 
@@ -24,9 +40,9 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full system design, r
 | Database | Postgres + pgvector (tested against Supabase; also works on Render/Neon/Fly) |
 | ML/Stats | scikit-learn, SciPy, pandas |
 | GenAI | Groq (`openai/gpt-oss-120b`, free tier) + `fastembed` (local, free, ONNX-runtime embeddings) |
-| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS, Recharts |
-| Auth | JWT (signup/login), bcrypt password hashing |
-| Infra | Docker Compose (local), Render/Fly + Vercel (cloud) |
+| Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS, Framer Motion, Recharts, `react-markdown` |
+| Auth | JWT (signup/login, persona-scoped), bcrypt password hashing |
+| Infra | Docker Compose (local), Render + Vercel (cloud), all free-tier |
 
 ## Quick start (local, Docker)
 
@@ -64,7 +80,8 @@ npm run dev
 
 ```bash
 cd backend
-pytest                 # pure unit tests (stats/ML engines, RAG chunking) run with no infra;
+pytest                 # pure unit tests (stats/ML engines, RAG chunking, persona prompts,
+                        # anti-hallucination context building) run with no infra;
                         # API integration tests auto-skip unless DATABASE_URL_SYNC is reachable
 ruff check .
 ```
@@ -80,11 +97,11 @@ npm run build
 
 ```
 backend/    FastAPI app — see docs/ARCHITECTURE.md for the module breakdown
-frontend/   Next.js app
+frontend/   Next.js app — business workspace + learner course, shared component library
 docs/       Architecture and deployment notes
 legacy-streamlit/   The original single-file Streamlit prototype this project replaced
 ```
 
 ## Deployment
 
-See the **Deployment** section of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the Supabase/Render/Fly/Vercel setup.
+See the **Deployment** section of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the Supabase/Render/Vercel setup. In short: managed Postgres with `pgvector` (Supabase free tier), backend on Render's free web service tier, frontend on Vercel's free tier, generation via Groq's free tier — the whole stack runs at zero cost.

@@ -11,9 +11,16 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
-    existing = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
+    # (email, persona) is the account identity, not email alone — the same email can hold
+    # a separate business account and learner account, each with its own password and data.
+    existing = (
+        await db.execute(select(User).where(User.email == payload.email, User.persona == payload.persona))
+    ).scalar_one_or_none()
     if existing is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A {payload.persona} account with this email already exists.",
+        )
 
     user = User(
         email=payload.email,
@@ -30,7 +37,9 @@ async def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
-    user = (await db.execute(select(User).where(User.email == payload.email))).scalar_one_or_none()
+    user = (
+        await db.execute(select(User).where(User.email == payload.email, User.persona == payload.persona))
+    ).scalar_one_or_none()
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password.")
 

@@ -25,6 +25,20 @@ def test_auto_detect_columns_finds_group_and_target() -> None:
     assert "feature_1" in detection["numeric_cols"]
 
 
+def test_auto_detect_columns_flags_guardrail_candidates() -> None:
+    df = _make_classification_df()
+    df["page_load_time"] = np.random.default_rng(1).normal(2.0, 0.5, len(df))
+    df["error_rate"] = np.random.default_rng(2).normal(0.02, 0.01, len(df))
+
+    engine = UniversalMLEngine()
+    detection = engine.auto_detect_columns(df)
+
+    assert "page_load_time" in detection["potential_guardrail_cols"]
+    assert "error_rate" in detection["potential_guardrail_cols"]
+    assert "feature_1" not in detection["potential_guardrail_cols"]
+    assert "group" not in detection["potential_guardrail_cols"]
+
+
 def test_train_model_classification_end_to_end() -> None:
     df = _make_classification_df(n=500)
     engine = UniversalMLEngine()

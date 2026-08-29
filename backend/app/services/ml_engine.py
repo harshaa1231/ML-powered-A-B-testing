@@ -46,6 +46,7 @@ class UniversalMLEngine:
         detection: dict[str, list[str]] = {
             "potential_group_cols": [],
             "potential_target_cols": [],
+            "potential_guardrail_cols": [],
             "numeric_cols": [],
             "categorical_cols": [],
             "binary_cols": [],
@@ -89,6 +90,17 @@ class UniversalMLEngine:
                 if kw in col_lower and col not in detection["potential_group_cols"]:
                     detection["potential_target_cols"].append(col)
                     break
+
+        # Guardrail metrics: numeric columns that look like something you'd want to make
+        # sure DIDN'T get worse, even while the primary metric improves. Heuristic only —
+        # no model call, deliberately, since pattern-matching does the job for free.
+        guardrail_keywords = ["time", "latency", "cost", "error", "churn", "bounce", "complaint"]
+        for col in detection["numeric_cols"]:
+            col_lower = col.lower()
+            if col in detection["potential_group_cols"]:
+                continue
+            if any(kw in col_lower for kw in guardrail_keywords):
+                detection["potential_guardrail_cols"].append(col)
 
         return detection
 

@@ -52,3 +52,44 @@ def test_run_ab_analysis_auto_picks_chi_square_for_binary_metric() -> None:
     )
     results = run_ab_analysis(df, "group", "converted", "auto")
     assert results["test_name"] == "Chi-square (2x2)"
+
+
+def test_run_ab_analysis_includes_srm_health_check() -> None:
+    rng = np.random.default_rng(2)
+    df = pd.DataFrame(
+        {
+            "group": ["control"] * 200 + ["treatment"] * 200,
+            "revenue": np.concatenate([rng.normal(50, 10, 200), rng.normal(55, 10, 200)]),
+        }
+    )
+    results = run_ab_analysis(df, "group", "revenue", "auto")
+    srm = results["health_checks"]["sample_ratio_mismatch"]
+    assert srm["passed"] is True
+    assert srm["n_control"] == 200
+    assert srm["n_treatment"] == 200
+
+
+def test_run_ab_analysis_computes_guardrail_metrics() -> None:
+    rng = np.random.default_rng(3)
+    df = pd.DataFrame(
+        {
+            "group": ["control"] * 300 + ["treatment"] * 300,
+            "revenue": np.concatenate([rng.normal(50, 10, 300), rng.normal(60, 10, 300)]),
+            "error_rate": np.concatenate([rng.normal(2.0, 0.5, 300), rng.normal(2.1, 0.5, 300)]),
+        }
+    )
+    results = run_ab_analysis(df, "group", "revenue", "auto", guardrail_cols=["error_rate"])
+    assert len(results["guardrails"]) == 1
+    assert results["guardrails"][0]["metric"] == "error_rate"
+
+
+def test_run_ab_analysis_skips_invalid_guardrail_columns() -> None:
+    rng = np.random.default_rng(4)
+    df = pd.DataFrame(
+        {
+            "group": ["control"] * 100 + ["treatment"] * 100,
+            "revenue": np.concatenate([rng.normal(50, 10, 100), rng.normal(60, 10, 100)]),
+        }
+    )
+    results = run_ab_analysis(df, "group", "revenue", "auto", guardrail_cols=["does_not_exist", "group", "revenue"])
+    assert results["guardrails"] == []

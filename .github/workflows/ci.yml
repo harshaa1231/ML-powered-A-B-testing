@@ -48,6 +48,23 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Enable pgvector extension
+        run: |
+          python - <<'EOF'
+          from sqlalchemy import create_engine, text
+          from app.core.config import get_settings
+
+          engine = create_engine(get_settings().database_url_sync)
+          with engine.begin() as conn:
+              conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+          EOF
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Seed knowledge base
+        run: python -m scripts.seed_knowledge_base
+
       - name: Run tests
         run: pytest -v
 

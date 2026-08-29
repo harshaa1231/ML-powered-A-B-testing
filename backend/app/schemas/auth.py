@@ -16,6 +16,7 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    persona: Persona
 
 
 class TokenResponse(BaseModel):

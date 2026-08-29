@@ -38,6 +38,11 @@ async def get_sample_dataset(key: str, current_user: CurrentUser) -> SampleDatas
 
     sample = samples[key]
     df = sample["df"]
+    # No row cap here, unlike the user-configurable generator below: these are our own
+    # fixed, bounded-size datasets (largest is ~90k rows), and truncating them silently
+    # weakens their statistical power — Cookie Cats' real effect is only ~0.8 points and
+    # needs its full sample size to reliably reach significance, so a preview cap here
+    # would quietly break the one dataset that exists specifically to demonstrate that.
     return SampleDatasetDetail(
         key=key,
         name=sample["name"],
@@ -45,7 +50,7 @@ async def get_sample_dataset(key: str, current_user: CurrentUser) -> SampleDatas
         group_col=sample["group_col"],
         metric_col=sample["metric_col"],
         row_count=len(df),
-        rows=df.head(MAX_PREVIEW_ROWS).to_dict(orient="records"),
+        rows=df.to_dict(orient="records"),
     )
 
 

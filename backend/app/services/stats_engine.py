@@ -198,3 +198,28 @@ class StatisticalTester:
         if metric_type == "categorical":
             return "chi_square"
         return "ttest"
+
+    @staticmethod
+    def sample_ratio_mismatch(control_n: int, treatment_n: int, expected_ratio: float = 0.5) -> dict[str, Any]:
+        """Chi-square goodness-of-fit check for a broken randomization split.
+
+        Uses p < 0.01 rather than the usual 0.05 — the conventional SRM threshold,
+        since flagging this incorrectly is costly enough to want a stricter bar.
+        """
+        total = control_n + treatment_n
+        if total == 0:
+            return {"passed": True, "p_value": 1.0, "observed_ratio": None, "expected_ratio": expected_ratio}
+
+        expected_control = total * expected_ratio
+        expected_treatment = total * (1 - expected_ratio)
+        chi2, p_value = stats.chisquare(f_obs=[control_n, treatment_n], f_exp=[expected_control, expected_treatment])
+
+        return {
+            "passed": bool(p_value >= 0.01),
+            "p_value": float(p_value),
+            "statistic": float(chi2),
+            "observed_ratio": float(control_n / total),
+            "expected_ratio": float(expected_ratio),
+            "n_control": control_n,
+            "n_treatment": treatment_n,
+        }

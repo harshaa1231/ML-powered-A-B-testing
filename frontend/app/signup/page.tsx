@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, Briefcase, GraduationCap, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { Button, Card, FadeIn, Input, Label } from "@/components/ui";
+import { PersonaSelector } from "@/components/PersonaSelector";
 import type { Persona } from "@/lib/types";
 
 function SignupForm() {
@@ -46,21 +47,10 @@ function SignupForm() {
         <h1 className="text-xl font-semibold tracking-tight">Create your account</h1>
 
         <div className="mt-5">
-          <Label>I&apos;m signing up as</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <PersonaOption
-              icon={Briefcase}
-              label="Business"
-              active={persona === "business"}
-              onClick={() => setPersona("business")}
-            />
-            <PersonaOption
-              icon={GraduationCap}
-              label="Learner"
-              active={persona === "learner"}
-              onClick={() => setPersona("learner")}
-            />
-          </div>
+          <PersonaSelector value={persona} onChange={setPersona} label="I'm signing up as" />
+          <p className="mt-2 text-xs text-muted">
+            Business and learner are separate accounts — even with the same email, you can have both.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -89,31 +79,6 @@ function SignupForm() {
         </p>
       </Card>
     </FadeIn>
-  );
-}
-
-function PersonaOption({
-  icon: Icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: typeof Briefcase;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-medium transition-colors ${
-        active ? "border-accent bg-accent/10 text-accent" : "border-surface-border text-muted hover:bg-surface-2"
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
   );
 }
 

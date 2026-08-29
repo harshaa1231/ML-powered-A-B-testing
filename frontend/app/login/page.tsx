@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { Button, Card, FadeIn, Input, Label } from "@/components/ui";
+import { PersonaSelector } from "@/components/PersonaSelector";
+import type { Persona } from "@/lib/types";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const initialPersona: Persona = searchParams.get("persona") === "learner" ? "learner" : "business";
+
+  const [persona, setPersona] = useState<Persona>(initialPersona);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +26,7 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, persona);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -28,43 +35,59 @@ export default function LoginPage() {
   }
 
   return (
+    <FadeIn className="w-full max-w-sm">
+      <Link href="/" className="mb-6 flex items-center justify-center gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-accent">
+          <Sparkles className="h-4 w-4 text-accent-foreground" />
+        </div>
+        <span className="text-sm font-semibold tracking-tight">AB Testing Pro</span>
+      </Link>
+      <Card>
+        <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
+
+        <div className="mt-5">
+          <PersonaSelector value={persona} onChange={setPersona} label="Sign in to your" />
+          <p className="mt-2 text-xs text-muted">
+            Business and learner are separate accounts, even under the same email — pick the one you&apos;re signing into.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <div>
+            <Label>Email</Label>
+            <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <Label>Password</Label>
+            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <Button type="submit" className="w-full" loading={submitting} icon={submitting ? undefined : ArrowRight}>
+            Sign in
+          </Button>
+        </form>
+        <p className="mt-6 text-center text-sm text-muted">
+          No account?{" "}
+          <Link href="/signup" className="font-medium text-accent hover:underline">
+            Create one
+          </Link>
+        </p>
+      </Card>
+    </FadeIn>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <div className="relative flex flex-1 items-center justify-center p-6">
       <div
         className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[400px] w-[700px] -translate-x-1/2 rounded-full opacity-20 blur-[120px]"
         style={{ background: "radial-gradient(circle, var(--accent), transparent 70%)" }}
         aria-hidden
       />
-      <FadeIn className="w-full max-w-sm">
-        <Link href="/" className="mb-6 flex items-center justify-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-accent">
-            <Sparkles className="h-4 w-4 text-accent-foreground" />
-          </div>
-          <span className="text-sm font-semibold tracking-tight">AB Testing Pro</span>
-        </Link>
-        <Card>
-          <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div>
-              <Label>Email</Label>
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <Label>Password</Label>
-              <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <Button type="submit" className="w-full" loading={submitting} icon={submitting ? undefined : ArrowRight}>
-              Sign in
-            </Button>
-          </form>
-          <p className="mt-6 text-center text-sm text-muted">
-            No account?{" "}
-            <Link href="/signup" className="font-medium text-accent hover:underline">
-              Create one
-            </Link>
-          </p>
-        </Card>
-      </FadeIn>
+      <Suspense fallback={null}>
+        <LoginForm />
+      </Suspense>
     </div>
   );
 }

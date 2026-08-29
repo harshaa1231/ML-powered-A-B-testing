@@ -2,12 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
-import { ApiError, runAdvancedTest, runSimpleTest } from "@/lib/api";
+import { ApiError, detectColumns, runAdvancedTest, runSimpleTest } from "@/lib/api";
 import { coerceRowTypes, parseCsv } from "@/lib/csv";
 
 type Mode = "simple" | "advanced";
+
+const HYPOTHESIS_PLACEHOLDER = "We believe that [change] for [segment] will [outcome] because [reason]...";
 
 export default function NewExperimentPage() {
   const [mode, setMode] = useState<Mode>("simple");
@@ -36,10 +39,26 @@ export default function NewExperimentPage() {
   );
 }
 
+function HypothesisField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <Label>Hypothesis (optional)</Label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={HYPOTHESIS_PLACEHOLDER}
+        rows={2}
+        className="w-full rounded-xl border border-surface-border bg-surface-2/60 px-3.5 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted/70 focus:border-accent focus:ring-4 focus:ring-[var(--ring)]"
+      />
+    </div>
+  );
+}
+
 function SimpleTestForm() {
   const router = useRouter();
   const [metricType, setMetricType] = useState<"conversion" | "continuous">("conversion");
   const [name, setName] = useState("Untitled experiment");
+  const [hypothesis, setHypothesis] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -59,6 +78,7 @@ function SimpleTestForm() {
         metricType === "conversion"
           ? await runSimpleTest({
               name,
+              hypothesis: hypothesis || undefined,
               metric_type: "conversion",
               control_conversions: Number(controlConversions),
               control_total: Number(controlTotal),
@@ -67,6 +87,7 @@ function SimpleTestForm() {
             })
           : await runSimpleTest({
               name,
+              hypothesis: hypothesis || undefined,
               metric_type: "continuous",
               control_values: parseNumberList(controlValues),
               treatment_values: parseNumberList(treatmentValues),
@@ -85,6 +106,8 @@ function SimpleTestForm() {
         <Label>Experiment name</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} />
       </div>
+
+      <HypothesisField value={hypothesis} onChange={setHypothesis} />
 
       <div>
         <Label>Metric type</Label>
@@ -137,10 +160,13 @@ function SimpleTestForm() {
 function AdvancedTestForm() {
   const router = useRouter();
   const [name, setName] = useState("Untitled experiment");
+  const [hypothesis, setHypothesis] = useState("");
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
   const [groupCol, setGroupCol] = useState("");
   const [metricCol, setMetricCol] = useState("");
+  const [guardrailCols, setGuardrailCols] = useState<string[]>([]);
+  const [suggestedGuardrails, setSuggestedGuardrails] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -152,6 +178,21 @@ function AdvancedTestForm() {
     setColumns(cols);
     setGroupCol(cols.find((c) => /group|variant|treatment/i.test(c)) ?? cols[0] ?? "");
     setMetricCol(cols[cols.length - 1] ?? "");
+    setGuardrailCols([]);
+    setSuggestedGuardrails([]);
+
+    try {
+      const detection = await detectColumns(parsed);
+      const suggested = detection.potential_guardrail_cols ?? [];
+      setSuggestedGuardrails(suggested);
+      setGuardrailCols(suggested);
+    } catch {
+      // heuristic detection is a nice-to-have; the form still works without it
+    }
+  }
+
+  function toggleGuardrail(col: string) {
+    setGuardrailCols((prev) => (prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]));
   }
 
   async function handleSubmit() {
@@ -159,7 +200,15 @@ function AdvancedTestForm() {
     setError(null);
     setSubmitting(true);
     try {
-      const experiment = await runAdvancedTest({ name, group_col: groupCol, metric_col: metricCol, test_type: "auto", rows });
+      const experiment = await runAdvancedTest({
+        name,
+        hypothesis: hypothesis || undefined,
+        group_col: groupCol,
+        metric_col: metricCol,
+        test_type: "auto",
+        guardrail_cols: guardrailCols,
+        rows,
+      });
       router.push(`/experiments/${experiment.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Something went wrong.");
@@ -168,12 +217,16 @@ function AdvancedTestForm() {
     }
   }
 
+  const guardrailCandidates = columns.filter((c) => c !== groupCol && c !== metricCol);
+
   return (
     <Card className="space-y-4">
       <div>
         <Label>Experiment name</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} />
       </div>
+
+      <HypothesisField value={hypothesis} onChange={setHypothesis} />
 
       <div>
         <Label>CSV file</Label>
@@ -217,6 +270,34 @@ function AdvancedTestForm() {
               </Select>
             </div>
           </div>
+
+          {guardrailCandidates.length > 0 && (
+            <div>
+              <Label>Guardrail metrics (optional)</Label>
+              {suggestedGuardrails.length > 0 && (
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-accent">
+                  <Sparkles className="h-3 w-3" />
+                  Pre-selected columns that look like guardrails — uncheck any that don&apos;t belong.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {guardrailCandidates.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => toggleGuardrail(c)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      guardrailCols.includes(c)
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-surface-border text-muted hover:bg-surface-2"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 

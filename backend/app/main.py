@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api.routes import auth, chat, datasets, experiments, ml
+from app.api.routes import analytics, auth, chat, datasets, experiments, ml, practice
 from app.core.config import get_settings
 from app.db.models.kb_document import KBDocument
 from app.db.session import AsyncSessionLocal
@@ -37,6 +37,8 @@ app.include_router(experiments.router)
 app.include_router(datasets.router)
 app.include_router(ml.router)
 app.include_router(chat.router)
+app.include_router(practice.router)
+app.include_router(analytics.router)
 
 
 @app.get("/api/health")

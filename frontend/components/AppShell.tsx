@@ -6,9 +6,11 @@ import { useEffect, type ReactNode } from "react";
 import {
   BarChart3,
   Beaker,
+  BookOpen,
   FlaskConical,
   GraduationCap,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   MessageCircle,
   Sparkles,
@@ -16,11 +18,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "./ui";
+import { AbbotWidget } from "./AbbotWidget";
 import type { Persona } from "@/lib/types";
 
 const WORK_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/experiments/new", label: "New Experiment", icon: Beaker },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/experiments", label: "Experiments", icon: ListChecks },
   { href: "/ml-studio", label: "ML Model Studio", icon: FlaskConical },
   { href: "/predictions", label: "Predictions", icon: Target },
   { href: "/datasets", label: "Sample Datasets", icon: BarChart3 },
@@ -29,10 +32,28 @@ const WORK_ITEMS = [
 const LEARN_ITEMS = [
   { href: "/chat", label: "Ask ABBot", icon: MessageCircle },
   { href: "/learn", label: "Learn A/B Testing", icon: GraduationCap },
+  { href: "/practice", label: "Practice Lab", icon: Beaker },
+  { href: "/glossary", label: "Glossary", icon: BookOpen },
 ];
 
-function navItemsFor(persona: Persona) {
-  return persona === "learner" ? [...LEARN_ITEMS, ...WORK_ITEMS] : [...WORK_ITEMS, ...LEARN_ITEMS];
+const SECTIONS_FOR: Record<Persona, { label: string; items: typeof WORK_ITEMS }[]> = {
+  business: [
+    { label: "Workspace", items: WORK_ITEMS },
+    { label: "Learn", items: LEARN_ITEMS },
+  ],
+  learner: [
+    { label: "Learn", items: LEARN_ITEMS },
+    { label: "Workspace", items: WORK_ITEMS },
+  ],
+};
+
+const ALL_ITEMS = [...WORK_ITEMS, ...LEARN_ITEMS];
+
+function pageTitleFor(pathname: string): string {
+  if (pathname.startsWith("/experiments/new")) return "New Experiment";
+  if (/^\/experiments\/[\w-]+$/.test(pathname)) return "Experiment Result";
+  const match = ALL_ITEMS.find((item) => pathname.startsWith(item.href));
+  return match?.label ?? "AB Testing Pro";
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -57,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!user) return null;
 
   const initial = (user.full_name || user.email)[0]?.toUpperCase();
-  const navItems = navItemsFor(user.persona);
+  const sections = SECTIONS_FOR[user.persona];
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -69,22 +90,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="text-sm font-semibold tracking-tight">AB Testing Pro</span>
         </Link>
 
-        <nav className="flex-1 space-y-0.5 px-3">
-          {navItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  active ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2/60 hover:text-foreground"
-                }`}
-              >
-                <item.icon className={`h-4 w-4 ${active ? "text-accent" : ""}`} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 space-y-4 px-3">
+          {sections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">{section.label}</p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        active ? "bg-surface-2 text-foreground" : "text-muted hover:bg-surface-2/60 hover:text-foreground"
+                      }`}
+                    >
+                      <item.icon className={`h-4 w-4 ${active ? "text-accent" : ""}`} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-surface-border p-4">
@@ -102,7 +130,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6 md:p-10">{children}</main>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center border-b border-surface-border px-6 md:px-10">
+          <h1 className="text-sm font-medium text-muted">{pageTitleFor(pathname)}</h1>
+        </header>
+        <main className="flex-1 overflow-y-auto p-6 md:p-10">{children}</main>
+      </div>
+
+      <AbbotWidget />
     </div>
   );
 }

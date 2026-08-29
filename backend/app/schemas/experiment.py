@@ -9,6 +9,7 @@ class SimpleTestRequest(BaseModel):
     name: str = "Untitled experiment"
     metric_type: Literal["conversion", "continuous"]
     domain: str = "general"
+    hypothesis: str | None = None
 
     # conversion metric
     control_conversions: int | None = None
@@ -24,9 +25,11 @@ class SimpleTestRequest(BaseModel):
 class AdvancedTestRequest(BaseModel):
     name: str = "Untitled experiment"
     domain: str = "general"
+    hypothesis: str | None = None
     group_col: str
     metric_col: str
     test_type: Literal["auto", "ttest", "chi_square", "mann_whitney"] = "auto"
+    guardrail_cols: list[str] = []
     rows: list[dict[str, Any]]
 
 
@@ -50,6 +53,7 @@ class ExperimentResponse(BaseModel):
     mode: str
     domain: str
     test_type: str
+    hypothesis: str | None
     group_col: str | None
     metric_col: str | None
     results: dict[str, Any]

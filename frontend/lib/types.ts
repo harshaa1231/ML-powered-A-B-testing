@@ -1,3 +1,26 @@
+export interface SampleRatioMismatch {
+  passed: boolean;
+  p_value: number;
+  statistic?: number;
+  observed_ratio: number | null;
+  expected_ratio: number;
+  n_control?: number;
+  n_treatment?: number;
+}
+
+export interface GuardrailResult {
+  test_name: string;
+  p_value: number;
+  effect_size: number;
+  uplift_percentage: number;
+  is_significant: boolean;
+  metric: string;
+  mean_control?: number;
+  mean_treatment?: number;
+  p_control?: number;
+  p_treatment?: number;
+}
+
 export interface ExperimentResult {
   test_name: string;
   p_value: number;
@@ -13,6 +36,9 @@ export interface ExperimentResult {
   domain?: string;
   metric?: string;
   test_type?: string;
+  ai_summary?: string;
+  health_checks?: { sample_ratio_mismatch: SampleRatioMismatch };
+  guardrails?: GuardrailResult[];
 }
 
 export interface Experiment {
@@ -21,6 +47,7 @@ export interface Experiment {
   mode: "simple" | "advanced";
   domain: string;
   test_type: string;
+  hypothesis: string | null;
   group_col: string | null;
   metric_col: string | null;
   results: ExperimentResult;
@@ -78,4 +105,27 @@ export interface User {
   email: string;
   full_name: string | null;
   persona: Persona;
+}
+
+export interface PracticeFeedbackResponse {
+  feedback: string;
+  sources: ChatSource[];
+}
+
+export interface TrendPoint {
+  week: string;
+  count: number;
+  significant: number;
+}
+
+export interface AnalyticsOverview {
+  total_experiments: number;
+  significant_count: number;
+  significance_rate: number;
+  experiments_this_week: number;
+  test_type_breakdown: Record<string, number>;
+  guardrail_failure_rate: number | null;
+  trend: TrendPoint[];
+  ai_summary: string;
+  sources: ChatSource[];
 }
