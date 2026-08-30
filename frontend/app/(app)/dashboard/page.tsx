@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Beaker, CheckCircle2, GraduationCap, MessageCircle, Plus, Sparkles, XCircle } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { getAnalyticsOverview, listExperiments } from "@/lib/api";
 import type { AnalyticsOverview, Experiment } from "@/lib/types";
@@ -26,7 +25,7 @@ export default function DashboardPage() {
   const trendData = overview?.trend.map((t) => ({ week: t.week.replace(/^\d{4}-W/, "W"), count: t.count, significant: t.significant })) ?? [];
 
   return (
-    <AppShell>
+    <>
       <FadeIn className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">{isLearner ? "Your learning dashboard" : "Program Overview"}</h1>
         <p className="mt-1 text-sm text-muted">
@@ -162,6 +161,6 @@ export default function DashboardPage() {
           </div>
         </>
       )}
-    </AppShell>
+    </>
   );
 }

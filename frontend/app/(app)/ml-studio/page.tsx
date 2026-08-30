@@ -1,13 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { Badge, Button, Card, Label, Select, Spinner, StatTile } from "@/components/ui";
 import { ApiError, detectColumns, getMLRun, trainModel } from "@/lib/api";
 import { coerceRowTypes, parseCsv } from "@/lib/csv";
 import type { MLRun } from "@/lib/types";
 
 type Task = "predictive" | "uplift";
+
+// A training run outlives the component that started it (it's a real backend job),
+// but the component's state doesn't — navigating to another page and back used to
+// show a blank form with no sign a run was ever in progress. Persisting just the
+// run id lets us reconnect to it and resume polling on remount.
+const ACTIVE_RUN_KEY = "abtesting_active_ml_run";
+
+function pollRun(id: string, onUpdate: (run: MLRun) => void, pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>) {
+  pollRef.current = setInterval(async () => {
+    try {
+      const updated = await getMLRun(id);
+      onUpdate(updated);
+      if (updated.status === "done" || updated.status === "failed") {
+        if (pollRef.current) clearInterval(pollRef.current);
+      }
+    } catch {
+      if (pollRef.current) clearInterval(pollRef.current);
+    }
+  }, 2000);
+}
 
 export default function MLStudioPage() {
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
@@ -21,7 +40,29 @@ export default function MLStudioPage() {
   const [submitting, setSubmitting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const storedId = window.localStorage.getItem(ACTIVE_RUN_KEY);
+    if (storedId) {
+      getMLRun(storedId)
+        .then((existing) => {
+          if (cancelled) return;
+          setRun(existing);
+          if (existing.status === "pending" || existing.status === "running") {
+            pollRun(storedId, setRun, pollRef);
+          }
+        })
+        .catch(() => window.localStorage.removeItem(ACTIVE_RUN_KEY));
+    }
+    return () => {
+      cancelled = true;
+      // Intentionally reads the live ref, not a value captured when this effect ran:
+      // pollRef is shared with handleSubmit's later poll too, and unmounting should
+      // clear whichever poll is actually active, not just the one this effect started.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
 
   async function handleFile(file: File) {
     const text = await file.text();
@@ -30,6 +71,7 @@ export default function MLStudioPage() {
     const cols = parsed.length > 0 ? Object.keys(parsed[0]) : [];
     setColumns(cols);
     setRun(null);
+    window.localStorage.removeItem(ACTIVE_RUN_KEY);
 
     try {
       const detection = await detectColumns(parsed);
@@ -55,14 +97,8 @@ export default function MLStudioPage() {
         task,
       });
       setRun(created);
-
-      pollRef.current = setInterval(async () => {
-        const updated = await getMLRun(created.id);
-        setRun(updated);
-        if (updated.status === "done" || updated.status === "failed") {
-          if (pollRef.current) clearInterval(pollRef.current);
-        }
-      }, 2000);
+      window.localStorage.setItem(ACTIVE_RUN_KEY, created.id);
+      pollRun(created.id, setRun, pollRef);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -71,7 +107,7 @@ export default function MLStudioPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-semibold">ML Model Studio</h1>
       <p className="mt-1 text-sm text-muted">
         Train Gradient Boosting and Random Forest models, or run T-learner uplift modeling to see who benefits most.
@@ -145,7 +181,7 @@ export default function MLStudioPage() {
 
         <div>{run && <RunStatus run={run} />}</div>
       </div>
-    </AppShell>
+    </>
   );
 }
 

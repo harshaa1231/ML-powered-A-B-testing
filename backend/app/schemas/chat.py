@@ -27,5 +27,11 @@ class ChatHistoryMessage(BaseModel):
     role: str
     content: str
     created_at: datetime
+    sources: list[ChatSource] | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ChatSessionHistoryResponse(BaseModel):
+    session_id: uuid.UUID | None
+    messages: list[ChatHistoryMessage]

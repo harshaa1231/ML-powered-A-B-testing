@@ -15,7 +15,6 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { Badge, Button, Card, FadeIn, Markdown, Spinner, StatTile } from "@/components/ui";
 import { getExperiment } from "@/lib/api";
 import type { Experiment, GuardrailResult } from "@/lib/types";
@@ -32,7 +31,7 @@ export default function ExperimentDetailPage({ params }: { params: Promise<{ id:
   }, [id]);
 
   return (
-    <AppShell>
+    <>
       {notFound ? (
         <p className="text-sm text-muted">Experiment not found.</p>
       ) : !experiment ? (
@@ -40,7 +39,7 @@ export default function ExperimentDetailPage({ params }: { params: Promise<{ id:
       ) : (
         <ExperimentDetail experiment={experiment} />
       )}
-    </AppShell>
+    </>
   );
 }
 

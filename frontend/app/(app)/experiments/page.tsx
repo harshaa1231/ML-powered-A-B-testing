@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Beaker, Plus } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { Badge, Button, EmptyState, FadeIn, Select, Skeleton } from "@/components/ui";
 import { listExperiments } from "@/lib/api";
 import type { Experiment } from "@/lib/types";
@@ -48,7 +47,7 @@ export default function ExperimentsListPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <FadeIn className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Experiments</h1>
@@ -132,7 +131,7 @@ export default function ExperimentsListPage() {
           </div>
         </FadeIn>
       )}
-    </AppShell>
+    </>
   );
 }
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { StreakBadge } from "@/components/StreakBadge";
 import { Badge, Button, Card, FadeIn, GroundedIn, Markdown, Select, Skeleton, StatTile } from "@/components/ui";
 import { ApiError, getSampleDataset, listSampleDatasets, runAdvancedTest, submitPracticeFeedback } from "@/lib/api";
@@ -78,7 +77,7 @@ export default function PracticeLabPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <FadeIn className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Practice Lab</h1>
@@ -179,6 +178,6 @@ export default function PracticeLabPage() {
           </Card>
         </FadeIn>
       )}
-    </AppShell>
+    </>
   );
 }

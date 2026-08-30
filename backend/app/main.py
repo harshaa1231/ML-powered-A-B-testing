@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 
-from app.api.routes import analytics, auth, chat, datasets, experiments, ml, practice
+from app.api.routes import analytics, auth, chat, datasets, experiments, kb, ml, practice
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.db.models.kb_document import KBDocument
@@ -47,6 +47,7 @@ app.include_router(ml.router)
 app.include_router(chat.router)
 app.include_router(practice.router)
 app.include_router(analytics.router)
+app.include_router(kb.router)
 
 
 @app.get("/api/health")

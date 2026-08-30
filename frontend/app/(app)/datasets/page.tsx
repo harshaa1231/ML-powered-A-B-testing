@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
 import { generateDataset, getSampleDataset, listGeneratorDomains, listSampleDatasets } from "@/lib/api";
 import { downloadCsv } from "@/lib/downloadCsv";
@@ -17,7 +16,7 @@ export default function DatasetsPage() {
   }, []);
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-semibold">Sample datasets</h1>
       <p className="mt-1 text-sm text-muted">
         Download one of these, then upload it under New Experiment → Advanced to see auto-detection in action.
@@ -38,7 +37,7 @@ export default function DatasetsPage() {
       <div className="mt-4 max-w-md">
         <GeneratorForm domains={domains} />
       </div>
-    </AppShell>
+    </>
   );
 }
 

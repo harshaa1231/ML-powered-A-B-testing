@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import * as api from "./api";
+import { ApiError } from "./api";
 import type { Persona, User } from "./types";
 
 interface AuthContextValue {
@@ -31,13 +32,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      try {
-        setUser(await api.getMe());
-      } catch {
-        api.clearToken();
-      } finally {
-        setLoading(false);
+      // Render's free tier spins the backend down after ~15 minutes idle, and the next
+      // request can take 30-50s to cold-start — that used to look identical to "your
+      // token is invalid" and silently logged people out. Only a real 401 means that;
+      // anything else (timeout, connection refused, 502 while cold-starting) gets
+      // retried with backoff instead, and the token is never touched on those.
+      const maxAttempts = 4;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          setUser(await api.getMe());
+          break;
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            api.clearToken();
+            break;
+          }
+          if (attempt === maxAttempts) break;
+          await new Promise((resolve) => setTimeout(resolve, attempt * 4000));
+        }
       }
+      setLoading(false);
     }
     restoreSession();
   }, []);

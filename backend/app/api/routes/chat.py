@@ -7,7 +7,13 @@ from app.api.deps import CurrentUser, DbSession
 from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.experiment import Experiment
 from app.rag.retriever import answer_question
-from app.schemas.chat import ChatHistoryMessage, ChatMessageRequest, ChatMessageResponse, ChatSource
+from app.schemas.chat import (
+    ChatHistoryMessage,
+    ChatMessageRequest,
+    ChatMessageResponse,
+    ChatSessionHistoryResponse,
+    ChatSource,
+)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -56,6 +62,24 @@ async def send_message(payload: ChatMessageRequest, current_user: CurrentUser, d
     await db.commit()
 
     return ChatMessageResponse(session_id=session.id, role="assistant", content=answer, sources=sources)
+
+
+@router.get("/sessions/latest", response_model=ChatSessionHistoryResponse)
+async def get_latest_session(current_user: CurrentUser, db: DbSession) -> ChatSessionHistoryResponse:
+    """Lets the chat page and the ABBot widget resume a conversation instead of
+    starting blank on every page load / after logging back in — previously nothing
+    ever fetched past history, even though it was persisted correctly all along."""
+    session = (
+        await db.execute(
+            select(ChatSession).where(ChatSession.user_id == current_user.id).order_by(ChatSession.created_at.desc()).limit(1)
+        )
+    ).scalar_one_or_none()
+    if session is None:
+        return ChatSessionHistoryResponse(session_id=None, messages=[])
+
+    stmt = select(ChatMessage).where(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at)
+    messages = (await db.execute(stmt)).scalars().all()
+    return ChatSessionHistoryResponse(session_id=session.id, messages=[ChatHistoryMessage.model_validate(m) for m in messages])
 
 
 @router.get("/sessions/{session_id}/history", response_model=list[ChatHistoryMessage])

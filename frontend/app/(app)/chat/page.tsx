@@ -3,7 +3,6 @@
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sparkles } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { useChatSession } from "@/lib/useChatSession";
 import { Button, GroundedIn, Input, Markdown, Spinner } from "@/components/ui";
@@ -45,7 +44,7 @@ function ChatPageInner() {
   }
 
   return (
-    <AppShell>
+    <>
       <div className="mx-auto flex h-[calc(100vh-5rem)] max-w-3xl flex-col">
         <div className="mb-4">
           <h1 className="text-2xl font-semibold">Ask ABBot</h1>
@@ -66,13 +65,15 @@ function ChatPageInner() {
                   {q}
                 </button>
               ))}
-              <button
-                onClick={() => send(QUIZ_ME_PROMPT)}
-                className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent hover:border-accent"
-              >
-                <Sparkles className="h-3 w-3" />
-                Quiz me
-              </button>
+              {user?.persona === "learner" && (
+                <button
+                  onClick={() => send(QUIZ_ME_PROMPT)}
+                  className="flex items-center gap-1 rounded-full border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent hover:border-accent"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Quiz me
+                </button>
+              )}
             </div>
           )}
 
@@ -116,7 +117,7 @@ function ChatPageInner() {
           </Button>
         </form>
       </div>
-    </AppShell>
+    </>
   );
 }
 

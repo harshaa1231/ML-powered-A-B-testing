@@ -137,6 +137,18 @@ class UniversalMLEngine:
         df = df.fillna(df.median(numeric_only=True))
         df = df.select_dtypes(include=[np.number])
 
+        if df.shape[1] == 0:
+            # Previously reached StandardScaler.fit_transform() with zero columns and
+            # failed with a cryptic sklearn internal error ("at least one array or
+            # dtype is required") instead of an actionable message — a real, easy-to-hit
+            # case: any dataset with just a group column and a target column (exactly
+            # the shape of several of this app's own sample datasets) has no feature
+            # columns left once both are excluded.
+            raise ValueError(
+                "No usable feature columns remain after excluding the target and group columns. "
+                "Add at least one more column to train on."
+            )
+
         if fit:
             scaler = StandardScaler()
             scaled = scaler.fit_transform(df)
@@ -179,9 +191,6 @@ class UniversalMLEngine:
 
         exclude_cols = [group_col] if group_col else []
         X, y = self.prepare_features(df, target_col, exclude_cols=exclude_cols, fit=True)
-
-        if X.shape[1] == 0:
-            raise ValueError("No usable features found after preprocessing. Check your data.")
 
         y_clean = y[~np.isnan(y)] if np.issubdtype(y.dtype, np.number) else y
         n_unique = len(np.unique(y_clean)) if len(y_clean) > 0 else 0

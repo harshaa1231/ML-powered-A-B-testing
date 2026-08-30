@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { ApiError, detectColumns, runAdvancedTest, runSimpleTest } from "@/lib/api";
 import { coerceRowTypes, parseCsv } from "@/lib/csv";
@@ -16,7 +15,7 @@ export default function NewExperimentPage() {
   const [mode, setMode] = useState<Mode>("simple");
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-semibold">New experiment</h1>
       <p className="mt-1 text-sm text-muted">Type in numbers for a quick answer, or upload a dataset for full analysis.</p>
 
@@ -40,7 +39,7 @@ export default function NewExperimentPage() {
       </p>
 
       <div className="mt-6 max-w-2xl">{mode === "simple" ? <SimpleTestForm /> : <AdvancedTestForm />}</div>
-    </AppShell>
+    </>
   );
 }
 

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { Card, FadeIn, Input } from "@/components/ui";
 import { GLOSSARY_TERMS } from "@/lib/glossaryData";
 
@@ -30,7 +29,7 @@ export default function GlossaryPage() {
   }, [filtered]);
 
   return (
-    <AppShell>
+    <>
       <FadeIn>
         <h1 className="text-2xl font-semibold tracking-tight">Glossary</h1>
         <p className="mt-1 text-sm text-muted">
@@ -75,6 +74,6 @@ export default function GlossaryPage() {
 
         {filtered.length === 0 && <p className="text-sm text-muted">No terms match &quot;{query}&quot;.</p>}
       </div>
-    </AppShell>
+    </>
   );
 }

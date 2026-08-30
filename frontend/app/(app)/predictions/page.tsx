@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { Button, Card, EmptyState, Label, Select, Spinner } from "@/components/ui";
 import { ApiError, listMLRuns, predict } from "@/lib/api";
 import { coerceRowTypes, parseCsv } from "@/lib/csv";
@@ -51,7 +50,7 @@ export default function PredictionsPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-semibold">Predictions</h1>
       <p className="mt-1 text-sm text-muted">Score new data against a model you&apos;ve already trained.</p>
 
@@ -97,6 +96,6 @@ export default function PredictionsPage() {
           )}
         </Card>
       )}
-    </AppShell>
+    </>
   );
 }

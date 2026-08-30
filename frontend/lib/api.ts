@@ -2,8 +2,10 @@ import type {
   AnalyticsOverview,
   ChatHistoryMessage,
   ChatMessageResponse,
+  ChatSessionHistory,
   Experiment,
   ExperimentResult,
+  KBDocument,
   MLRun,
   Persona,
   PracticeFeedbackResponse,
@@ -15,17 +17,24 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const TOKEN_KEY = "abtesting_token";
 
+// sessionStorage, not localStorage: business and learner are meant to be usable
+// side by side in two tabs at once (they're genuinely separate accounts). localStorage
+// is shared across every tab of the same origin, so logging into one account in one
+// tab would silently overwrite the token the other tab is using underneath it —
+// the other tab's UI keeps showing its own persona's chrome while its API calls
+// start authenticating as the other account. sessionStorage is isolated per tab,
+// which is exactly the isolation two concurrently-open accounts need.
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  return window.sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function setToken(token: string): void {
-  window.localStorage.setItem(TOKEN_KEY, token);
+  window.sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearToken(): void {
-  window.localStorage.removeItem(TOKEN_KEY);
+  window.sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -199,6 +208,16 @@ export function sendChatMessage(message: string, sessionId?: string, experimentI
 
 export function getChatHistory(sessionId: string) {
   return request<ChatHistoryMessage[]>(`/api/chat/sessions/${sessionId}/history`);
+}
+
+export function getLatestChatSession() {
+  return request<ChatSessionHistory>("/api/chat/sessions/latest");
+}
+
+// --- Knowledge base ---
+
+export function getKbDocument(slug: string) {
+  return request<KBDocument>(`/api/kb/${slug}`);
 }
 
 // --- Practice Lab ---

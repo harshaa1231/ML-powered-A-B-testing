@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { Card, FadeIn } from "@/components/ui";
 import { StreakBadge } from "@/components/StreakBadge";
 import { SkillTree, type SkillNode } from "@/components/learn/SkillTree";
@@ -52,7 +51,7 @@ export default function LearnPage() {
   }
 
   return (
-    <AppShell>
+    <>
       <FadeIn className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Learn A/B Testing</h1>
@@ -80,7 +79,7 @@ export default function LearnPage() {
       <FadeIn delay={0.1} className="mt-6">
         {selectedId && <LessonContent id={selectedId} />}
       </FadeIn>
-    </AppShell>
+    </>
   );
 }
 

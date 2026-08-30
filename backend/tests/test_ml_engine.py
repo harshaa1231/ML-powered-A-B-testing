@@ -66,6 +66,22 @@ def test_train_model_rejects_constant_target() -> None:
         engine.train_model(df, target_col="converted")
 
 
+def test_train_model_rejects_dataset_with_no_feature_columns_left() -> None:
+    """Regression test: a dataset with only a group column and a target column (the
+    exact shape of several of this app's own sample datasets) used to reach
+    StandardScaler with zero columns and crash with a cryptic sklearn internal error
+    ('at least one array or dtype is required') instead of an actionable message."""
+    rng = np.random.default_rng(1)
+    n = 200
+    df = pd.DataFrame({
+        "group": rng.choice(["control", "treatment"], n),
+        "converted": (rng.random(n) < 0.3).astype(int),
+    })
+    engine = UniversalMLEngine()
+    with pytest.raises(ValueError, match="No usable feature columns remain"):
+        engine.train_model(df, target_col="converted", group_col="group")
+
+
 def test_predict_after_training_returns_expected_shape() -> None:
     df = _make_classification_df(n=500)
     engine = UniversalMLEngine()

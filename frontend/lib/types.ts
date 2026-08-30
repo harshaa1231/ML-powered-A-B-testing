@@ -96,6 +96,18 @@ export interface ChatHistoryMessage {
   role: string;
   content: string;
   created_at: string;
+  sources: ChatSource[] | null;
+}
+
+export interface ChatSessionHistory {
+  session_id: string | null;
+  messages: ChatHistoryMessage[];
+}
+
+export interface KBDocument {
+  slug: string;
+  title: string;
+  content: string;
 }
 
 export type Persona = "business" | "learner";

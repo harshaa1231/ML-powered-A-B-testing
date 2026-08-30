@@ -2,11 +2,12 @@
 
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, Loader2 } from "lucide-react";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import { BookOpen, Loader2, X } from "lucide-react";
+import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ChatSource } from "@/lib/types";
+import { ApiError, getKbDocument } from "@/lib/api";
+import type { ChatSource, KBDocument } from "@/lib/types";
 
 export function Card({
   children,
@@ -176,8 +177,22 @@ export function EmptyState({
 
 /** The "visual confidence indicator" pattern: distinguishes an answer grounded in
  * retrieved knowledge-base content from one the model produced from general
- * reasoning alone, instead of burying that distinction in a small badge row. */
+ * reasoning alone, instead of burying that distinction in a small badge row.
+ * Each source pill is a real citation — clicking it opens the actual document. */
 export function GroundedIn({ sources }: { sources: ChatSource[] }) {
+  const [openSlug, setOpenSlug] = useState<string | null>(null);
+  const [doc, setDoc] = useState<KBDocument | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  function openSource(slug: string) {
+    setOpenSlug(slug);
+    setDoc(null);
+    setDocError(null);
+    getKbDocument(slug)
+      .then(setDoc)
+      .catch((err) => setDocError(err instanceof ApiError ? err.message : "Couldn't load this document."));
+  }
+
   if (sources.length === 0) {
     return (
       <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
@@ -190,19 +205,62 @@ export function GroundedIn({ sources }: { sources: ChatSource[] }) {
   const unique = Array.from(new Map(sources.map((s) => [s.slug, s])).values());
 
   return (
-    <div className="mt-2 rounded-lg border border-accent/20 bg-accent/5 px-2.5 py-2">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium text-accent">
-        <BookOpen className="h-3 w-3" />
-        Grounded in the knowledge base
+    <>
+      <div className="mt-2 rounded-lg border border-accent/20 bg-accent/5 px-2.5 py-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-accent">
+          <BookOpen className="h-3 w-3" />
+          Grounded in the knowledge base
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {unique.map((s) => (
+            <button
+              key={s.slug}
+              type="button"
+              onClick={() => openSource(s.slug)}
+              className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-accent"
+            >
+              {s.title}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="mt-1.5 flex flex-wrap gap-1.5">
-        {unique.map((s) => (
-          <span key={s.slug} className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted">
-            {s.title}
-          </span>
-        ))}
-      </div>
-    </div>
+
+      {openSlug && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setOpenSlug(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-surface-border bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="text-base font-semibold">{doc?.title ?? "Loading..."}</h3>
+              <button
+                onClick={() => setOpenSlug(null)}
+                className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4">
+              {docError ? (
+                <p className="text-sm text-danger">{docError}</p>
+              ) : doc ? (
+                <Markdown>{doc.content}</Markdown>
+              ) : (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-4/6" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
