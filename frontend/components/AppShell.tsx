@@ -9,6 +9,7 @@ import {
   Beaker,
   BookOpen,
   FlaskConical,
+  Gauge,
   GraduationCap,
   LayoutDashboard,
   ListChecks,
@@ -28,6 +29,7 @@ import type { Persona } from "@/lib/types";
 const WORK_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/experiments", label: "Experiments", icon: ListChecks },
+  { href: "/metrics", label: "Metrics", icon: Gauge },
   { href: "/ml-studio", label: "ML Model Studio", icon: FlaskConical },
   { href: "/predictions", label: "Predictions", icon: Target },
   { href: "/datasets", label: "Sample Datasets", icon: BarChart3 },

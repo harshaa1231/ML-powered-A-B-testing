@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Gauge, Sparkles } from "lucide-react";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
-import { ApiError, detectColumns, runAdvancedTest, runSimpleTest } from "@/lib/api";
+import { ApiError, detectColumns, listMetrics, runAdvancedTest, runSimpleTest } from "@/lib/api";
 import { coerceRowTypes, parseCsv } from "@/lib/csv";
+import type { Metric } from "@/lib/types";
 
 type Mode = "simple" | "advanced";
 
@@ -171,8 +172,17 @@ function AdvancedTestForm() {
   const [metricCol, setMetricCol] = useState("");
   const [guardrailCols, setGuardrailCols] = useState<string[]>([]);
   const [suggestedGuardrails, setSuggestedGuardrails] = useState<string[]>([]);
+  const [savedMetrics, setSavedMetrics] = useState<Metric[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    listMetrics().then(setSavedMetrics).catch(() => {});
+  }, []);
+
+  function metricFor(col: string): Metric | undefined {
+    return savedMetrics.find((m) => m.column_name === col);
+  }
 
   async function handleFile(file: File) {
     const text = await file.text();
@@ -181,17 +191,27 @@ function AdvancedTestForm() {
     const cols = parsed.length > 0 ? Object.keys(parsed[0]) : [];
     setColumns(cols);
     setGroupCol(cols.find((c) => /group|variant|treatment/i.test(c)) ?? cols[0] ?? "");
-    setMetricCol(cols[cols.length - 1] ?? "");
+
+    // A saved, non-guardrail metric that matches an uploaded column takes priority
+    // over the naive "last column" default — this is the actual payoff of the
+    // metrics catalog: recognize your own metric by name, not just pick a column.
+    const recognizedMetric = cols.find((c) => savedMetrics.some((m) => m.column_name === c && !m.is_guardrail));
+    setMetricCol(recognizedMetric ?? cols[cols.length - 1] ?? "");
     setGuardrailCols([]);
     setSuggestedGuardrails([]);
 
+    const savedGuardrailCols = cols.filter((c) => savedMetrics.some((m) => m.column_name === c && m.is_guardrail));
+
     try {
       const detection = await detectColumns(parsed);
-      const suggested = detection.potential_guardrail_cols ?? [];
+      const heuristic = detection.potential_guardrail_cols ?? [];
+      const suggested = Array.from(new Set([...savedGuardrailCols, ...heuristic]));
       setSuggestedGuardrails(suggested);
       setGuardrailCols(suggested);
     } catch {
-      // heuristic detection is a nice-to-have; the form still works without it
+      // heuristic detection is a nice-to-have; saved guardrail metrics still apply without it
+      setSuggestedGuardrails(savedGuardrailCols);
+      setGuardrailCols(savedGuardrailCols);
     }
   }
 
@@ -245,7 +265,11 @@ function AdvancedTestForm() {
           <a href="/datasets" className="text-accent hover:underline">
             Sample Datasets
           </a>
-          .
+          . Columns matching a{" "}
+          <a href="/metrics" className="text-accent hover:underline">
+            saved metric
+          </a>{" "}
+          are recognized automatically.
         </p>
       </div>
 
@@ -268,10 +292,16 @@ function AdvancedTestForm() {
               <Select value={metricCol} onChange={(e) => setMetricCol(e.target.value)}>
                 {columns.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {metricFor(c) ? `${c} (${metricFor(c)!.name})` : c}
                   </option>
                 ))}
               </Select>
+              {metricFor(metricCol) && (
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-accent">
+                  <Gauge className="h-3 w-3" />
+                  Using your saved metric &ldquo;{metricFor(metricCol)!.name}&rdquo;
+                </p>
+              )}
             </div>
           </div>
 
@@ -296,7 +326,7 @@ function AdvancedTestForm() {
                         : "border-surface-border text-muted hover:bg-surface-2"
                     }`}
                   >
-                    {c}
+                    {metricFor(c) ? metricFor(c)!.name : c}
                   </button>
                 ))}
               </div>

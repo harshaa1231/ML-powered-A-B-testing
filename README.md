@@ -15,6 +15,8 @@ Signing up asks whether you're **Business** or **Learner** — this isn't a cosm
 - **Hypothesis-first experiment creation** — a templated "we believe that ___ will ___ because ___" field, shown prominently on every result.
 - **Sample Ratio Mismatch (SRM) health check** — a real chi-square goodness-of-fit test that runs automatically on every experiment and flags broken randomization before you trust the result.
 - **Guardrail metrics / Scorecard** — pick secondary metrics (latency, churn, cost) alongside your primary one; each gets its own test result in a scorecard, and the column picker proactively suggests likely guardrail columns from your data.
+- **A metrics catalog** — define what "Checkout Conversion" means once (name, description, column, guardrail or not) and reuse it by name on every future experiment instead of re-picking raw columns each time; a Scorecard row shows your metric's real name, not a raw column header.
+- **A decision workflow** — record what actually happened after a result came in (shipped / rolled back), so an experiment is a real outcome, not a number read once and forgotten.
 - **A real Experiments list** — sortable, filterable, separate from a lightweight Program Overview (KPI tiles, weekly trend, most-used test types).
 - **RAG-grounded AI Summary** on every result — not a bare model call. It retrieves the relevant knowledge-base doc for the specific test type and health-check outcome, and is fed the actual computed numbers (group rates/means, guardrail results) so it explains *this* experiment, not a generic one.
 - **ABBot, ambient** — a floating assistant available on every page, not a separate destination. Opened from an experiment, it already has that experiment's numbers in context.

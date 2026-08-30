@@ -10,7 +10,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.db.models.experiment import Experiment
 from app.db.models.user import User
 from app.rag.retriever import answer_question
-from app.schemas.experiment import AdvancedTestRequest, ExperimentResponse, SimpleTestRequest
+from app.schemas.experiment import AdvancedTestRequest, ExperimentResponse, SimpleTestRequest, UpdateDecisionRequest
 from app.services.experiment_analysis import run_ab_analysis
 from app.services.stats_engine import StatisticalTester
 
@@ -137,4 +137,20 @@ async def get_experiment(experiment_id: uuid.UUID, current_user: CurrentUser, db
     experiment = (await db.execute(stmt)).scalar_one_or_none()
     if experiment is None:
         raise HTTPException(status_code=404, detail="Experiment not found.")
+    return ExperimentResponse.model_validate(experiment)
+
+
+@router.patch("/{experiment_id}/decision", response_model=ExperimentResponse)
+async def update_decision(
+    experiment_id: uuid.UUID, payload: UpdateDecisionRequest, current_user: CurrentUser, db: DbSession
+) -> ExperimentResponse:
+    """Records what actually happened after the result came in — an experiment is a
+    system of record with a real outcome, not just a number read once and forgotten."""
+    stmt = select(Experiment).where(Experiment.id == experiment_id, Experiment.user_id == current_user.id)
+    experiment = (await db.execute(stmt)).scalar_one_or_none()
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found.")
+    experiment.decision = payload.decision
+    await db.commit()
+    await db.refresh(experiment)
     return ExperimentResponse.model_validate(experiment)

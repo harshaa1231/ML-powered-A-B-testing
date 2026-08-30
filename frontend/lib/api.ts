@@ -3,9 +3,11 @@ import type {
   ChatHistoryMessage,
   ChatMessageResponse,
   ChatSessionHistory,
+  Decision,
   Experiment,
   ExperimentResult,
   KBDocument,
+  Metric,
   MLRun,
   Persona,
   PracticeFeedbackResponse,
@@ -137,6 +139,30 @@ export function listExperiments() {
 
 export function getExperiment(id: string) {
   return request<Experiment>(`/api/experiments/${id}`);
+}
+
+export function updateExperimentDecision(id: string, decision: Decision) {
+  return request<Experiment>(`/api/experiments/${id}/decision`, {
+    method: "PATCH",
+    body: JSON.stringify({ decision }),
+  });
+}
+
+// --- Metrics catalog ---
+
+export function listMetrics() {
+  return request<Metric[]>("/api/metrics");
+}
+
+export function createMetric(payload: { name: string; description?: string; column_name: string; is_guardrail?: boolean }) {
+  return request<Metric>("/api/metrics", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteMetric(id: string) {
+  return request<void>(`/api/metrics/${id}`, { method: "DELETE" });
 }
 
 // --- Datasets ---

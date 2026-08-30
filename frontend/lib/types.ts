@@ -41,6 +41,8 @@ export interface ExperimentResult {
   guardrails?: GuardrailResult[];
 }
 
+export type Decision = "shipped" | "rolled_back" | null;
+
 export interface Experiment {
   id: string;
   name: string;
@@ -50,7 +52,17 @@ export interface Experiment {
   hypothesis: string | null;
   group_col: string | null;
   metric_col: string | null;
+  decision: Decision;
   results: ExperimentResult;
+  created_at: string;
+}
+
+export interface Metric {
+  id: string;
+  name: string;
+  description: string | null;
+  column_name: string;
+  is_guardrail: boolean;
   created_at: string;
 }
 

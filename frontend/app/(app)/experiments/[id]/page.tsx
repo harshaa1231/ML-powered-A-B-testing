@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   LayoutGrid,
   MessageCircle,
+  RotateCcw,
+  Rocket,
   ShieldCheck,
   Sparkles,
   TrendingDown,
@@ -16,8 +18,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { Badge, Button, Card, FadeIn, Markdown, Spinner, StatTile } from "@/components/ui";
-import { getExperiment } from "@/lib/api";
-import type { Experiment, GuardrailResult } from "@/lib/types";
+import { getExperiment, listMetrics, updateExperimentDecision } from "@/lib/api";
+import type { Decision, Experiment, GuardrailResult, Metric } from "@/lib/types";
 
 export default function ExperimentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,18 +39,39 @@ export default function ExperimentDetailPage({ params }: { params: Promise<{ id:
       ) : !experiment ? (
         <Spinner />
       ) : (
-        <ExperimentDetail experiment={experiment} />
+        <ExperimentDetail experiment={experiment} onUpdate={setExperiment} />
       )}
     </>
   );
 }
 
-function ExperimentDetail({ experiment }: { experiment: Experiment }) {
+function ExperimentDetail({ experiment, onUpdate }: { experiment: Experiment; onUpdate: (e: Experiment) => void }) {
+  // undefined = nothing in flight; Decision's own `null` means "submitting a clear," so it
+  // can't double as the idle sentinel too.
+  const [savingDecision, setSavingDecision] = useState<Decision | undefined>(undefined);
+  const [metrics, setMetrics] = useState<Metric[]>([]);
   const r = experiment.results;
   const controlValue = r.mean_control ?? (r.p_control !== undefined ? r.p_control * 100 : undefined);
   const treatmentValue = r.mean_treatment ?? (r.p_treatment !== undefined ? r.p_treatment * 100 : undefined);
   const isRate = r.p_control !== undefined;
   const srm = r.health_checks?.sample_ratio_mismatch;
+
+  useEffect(() => {
+    listMetrics().then(setMetrics).catch(() => {});
+  }, []);
+
+  function labelFor(column: string): string {
+    return metrics.find((m) => m.column_name === column)?.name ?? column;
+  }
+
+  async function setDecision(decision: Decision) {
+    setSavingDecision(decision);
+    try {
+      onUpdate(await updateExperimentDecision(experiment.id, decision === experiment.decision ? null : decision));
+    } finally {
+      setSavingDecision(undefined);
+    }
+  }
 
   const chartData =
     controlValue !== undefined && treatmentValue !== undefined
@@ -157,9 +180,9 @@ function ExperimentDetail({ experiment }: { experiment: Experiment }) {
           <Card className="mt-6">
             <h3 className="mb-4 text-sm font-medium">Scorecard</h3>
             <div className="space-y-3">
-              <ScorecardRow label={r.metric ?? "Primary metric"} result={r} isPrimary />
+              <ScorecardRow label={r.metric ? labelFor(r.metric) : "Primary metric"} result={r} isPrimary />
               {r.guardrails.map((g) => (
-                <ScorecardRow key={g.metric} label={g.metric} result={g} />
+                <ScorecardRow key={g.metric} label={labelFor(g.metric)} result={g} />
               ))}
             </div>
           </Card>
@@ -202,6 +225,33 @@ function ExperimentDetail({ experiment }: { experiment: Experiment }) {
             <Link href="/ml-studio">
               <Button variant="secondary">Train a model</Button>
             </Link>
+          </div>
+        </Card>
+      </FadeIn>
+
+      <FadeIn delay={0.18}>
+        <Card className="mt-6">
+          <h3 className="text-sm font-medium">What did you decide?</h3>
+          <p className="mt-2 text-sm text-muted">
+            Close the loop — an experiment is a real outcome, not just a number read once and forgotten.
+          </p>
+          <div className="mt-4 flex gap-3">
+            <Button
+              variant={experiment.decision === "shipped" ? "primary" : "secondary"}
+              icon={Rocket}
+              loading={savingDecision === "shipped"}
+              onClick={() => setDecision("shipped")}
+            >
+              {experiment.decision === "shipped" ? "Shipped" : "Ship it"}
+            </Button>
+            <Button
+              variant={experiment.decision === "rolled_back" ? "primary" : "secondary"}
+              icon={RotateCcw}
+              loading={savingDecision === "rolled_back"}
+              onClick={() => setDecision("rolled_back")}
+            >
+              {experiment.decision === "rolled_back" ? "Rolled back" : "Roll back"}
+            </Button>
           </div>
         </Card>
       </FadeIn>

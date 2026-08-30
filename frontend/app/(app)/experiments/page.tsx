@@ -97,6 +97,7 @@ export default function ExperimentsListPage() {
                     onClick={toggleSort}
                   />
                   <th className="px-4 py-3 font-medium">Significant</th>
+                  <th className="px-4 py-3 font-medium">Decision</th>
                   <SortableHeader label="Created" sortKey="created_at" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
                 </tr>
               </thead>
@@ -122,6 +123,15 @@ export default function ExperimentsListPage() {
                       <Badge tone={exp.results.is_significant ? "success" : "neutral"}>
                         {exp.results.is_significant ? "Yes" : "No"}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {exp.decision ? (
+                        <Badge tone={exp.decision === "shipped" ? "success" : "danger"}>
+                          {exp.decision === "shipped" ? "Shipped" : "Rolled back"}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">{new Date(exp.created_at).toLocaleDateString()}</td>
                   </tr>

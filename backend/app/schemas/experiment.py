@@ -56,7 +56,12 @@ class ExperimentResponse(BaseModel):
     hypothesis: str | None
     group_col: str | None
     metric_col: str | None
+    decision: Literal["shipped", "rolled_back"] | None
     results: dict[str, Any]
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UpdateDecisionRequest(BaseModel):
+    decision: Literal["shipped", "rolled_back"] | None

@@ -25,6 +25,10 @@ class Experiment(Base, UUIDPKMixin, TimestampMixin):
     hypothesis: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     group_col: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metric_col: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # What actually happened after the result came in — "shipped" | "rolled_back" | None
+    # (still deciding). Statsig-style: an experiment is a system of record with a real
+    # outcome, not just a one-off number that's forgotten once you've read it.
+    decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Full result payload (p_value, effect_size, uplift_percentage, is_significant, etc.)
     results: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
