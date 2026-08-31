@@ -2,7 +2,9 @@
 
 A full-stack experimentation platform with two distinct products in one codebase: a **Statsig-style experimentation workspace** for practitioners, and a **gamified, hands-on A/B testing course** for people learning the subject — both grounded in the same retrieval-augmented AI assistant (ABBot) and the same real statistics engine.
 
-This is a from-scratch rewrite of an earlier single-file Streamlit prototype (preserved for reference under [`legacy-streamlit/`](legacy-streamlit/)) into a real product: a FastAPI backend with persistent Postgres storage, a Next.js frontend, and a Groq-powered RAG assistant threaded through four separate surfaces — all running on free-tier infrastructure.
+**Live**: [ml-powered-a-b-testing.vercel.app](https://ml-powered-a-b-testing.vercel.app) (frontend) · [ml-powered-a-b-testing.onrender.com/docs](https://ml-powered-a-b-testing.onrender.com/docs) (API docs) — both on free tiers, so the first request after idle time can take 30-50s to cold-start.
+
+This is a from-scratch rewrite of an earlier single-file Streamlit prototype (preserved for reference under [`legacy-streamlit/`](legacy-streamlit/)) into a real product: a FastAPI backend with persistent Postgres storage, a Next.js frontend, and a Groq-powered RAG assistant threaded through five separate surfaces — all running on free-tier infrastructure, hardened against that free tier's actual limits rather than just assumed to fit.
 
 See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full system design, request flows, and the reasoning behind each infra choice.
 
@@ -32,9 +34,18 @@ Signing up asks whether you're **Business** or **Learner** — this isn't a cosm
 
 ### Where RAG actually runs
 
-One retrieval pipeline (`app/rag/retriever.py`), reused across four surfaces rather than sprinkled everywhere for appearance: **chat**, **experiment AI summaries**, **Practice Lab feedback**, and **Program Analytics trends**. Each call is grounded both in the curated knowledge base (pgvector similarity search) and in the real numbers for that specific situation — the context builder forwards every number the stats engine actually computed and explicitly instructs the model never to invent metrics beyond what it's given.
+One retrieval pipeline (`app/rag/retriever.py`), reused across five surfaces rather than sprinkled everywhere for appearance: **chat**, **the floating ABBot widget**, **experiment AI summaries**, **Practice Lab feedback**, and **Program Analytics trends**. Each call is grounded both in the curated knowledge base (pgvector similarity search) and in the real numbers for that specific situation — the context builder forwards every number the stats engine actually computed and explicitly instructs the model never to invent metrics beyond what it's given (a real failure mode caught during manual testing and pinned down as a regression test).
 
-**Bring your own data** — upload a CSV, TXT, MD, or PDF directly from the chat page and ABBot answers from it, everywhere it answers, not just that one conversation. Uploaded content is chunked and embedded exactly like the curated knowledge base and merged into the same retrieval pool, scoped to your account. A citation from your own upload is labeled "Yours" and clicking it shows the real content, same as a curated source.
+**Bring your own data** — upload a CSV, TXT, MD, or PDF directly from the chat page and ABBot answers from it, everywhere it answers, not just that one conversation. Uploaded content is chunked and embedded exactly like the curated knowledge base and merged into one re-ranked retrieval pool, scoped to your account. A citation from your own upload is labeled "Yours" and clicking it shows the real content, same as a curated source.
+
+**A conversation that behaves like one** — chat history is actually persisted and restored (not just stored and forgotten), with an explicit "New conversation" action for when you want to start over rather than continue an old thread. **Tuned against Groq's real free-tier ceiling, not a guess** — every account shares one API key, so the response-length budget was set by measuring an actual full exchange, and a real retry (using Groq's own reported reset time) kicks in before ever showing a broken or cut-off answer.
+
+## Also true of the whole app, not just one persona
+
+- **Light and dark**, switchable in the header, persisted per device, applied before hydration so there's no flash of the wrong theme on load.
+- **A real mobile nav** — the sidebar collapses into a hamburger-triggered drawer below the `md` breakpoint, rather than just disappearing with no way back to it.
+- **Rate-limited auth** — login and signup are throttled per IP (`slowapi`, in-memory) to blunt brute-force and spam-signup attempts, tuned to not trip on realistic use (one person creating both a business and a learner account).
+- **99 backend tests**, `ruff` clean, `tsc`/`eslint`/`next build` clean — covering the statistics engine, the ML engine, every RAG surface, persona-scoped auth, rate limiting, and the metrics/decision/document-upload features, not just the happy path.
 
 ## Tech stack
 
@@ -44,8 +55,9 @@ One retrieval pipeline (`app/rag/retriever.py`), reused across four surfaces rat
 | Database | Postgres + pgvector (tested against Supabase; also works on Render/Neon/Fly) |
 | ML/Stats | scikit-learn, SciPy, pandas |
 | GenAI | Groq (`openai/gpt-oss-120b`, free tier) + `fastembed` (local, free, ONNX-runtime embeddings) |
+| Document parsing | `pypdf` (PDF text extraction) + pandas (CSV → prose summary) for user uploads |
 | Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS, Framer Motion, Recharts, `react-markdown` |
-| Auth | JWT (signup/login, persona-scoped), bcrypt password hashing |
+| Auth | JWT (signup/login, persona-scoped), bcrypt password hashing, `slowapi` rate limiting |
 | Infra | Docker Compose (local), Render + Vercel (cloud), all free-tier |
 
 ## Quick start (local, Docker)
