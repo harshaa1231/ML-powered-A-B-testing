@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageCircle, Maximize2, Sparkles, X } from "lucide-react";
+import { MessageCircle, Maximize2, RotateCcw, Sparkles, X } from "lucide-react";
 import { useChatSession } from "@/lib/useChatSession";
 import { Button, GroundedIn, Input, Markdown, Spinner } from "@/components/ui";
 
@@ -22,7 +22,7 @@ export function AbbotWidget() {
 
   const isStudyContext = pathname.startsWith("/learn") || pathname.startsWith("/practice");
 
-  const { messages, sending, error, send, scrollRef } = useChatSession(experimentId);
+  const { messages, sending, error, send, reset, scrollRef } = useChatSession(experimentId);
 
   // Full-page /chat already covers this experience for a longer conversation — don't double up the FAB there.
   if (pathname.startsWith("/chat")) return null;
@@ -63,9 +63,21 @@ export function AbbotWidget() {
                   <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] text-accent">study companion</span>
                 )}
               </div>
-              <Link href="/chat" className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-foreground" aria-label="Open full chat">
-                <Maximize2 className="h-3.5 w-3.5" />
-              </Link>
+              <div className="flex items-center gap-1">
+                {messages.length > 0 && (
+                  <button
+                    onClick={reset}
+                    className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-foreground"
+                    aria-label="New conversation"
+                    title="New conversation"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <Link href="/chat" className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-foreground" aria-label="Open full chat">
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
 
             <div className="flex-1 space-y-3 overflow-y-auto p-4">

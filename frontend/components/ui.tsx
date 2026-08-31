@@ -6,7 +6,7 @@ import { BookOpen, Loader2, X } from "lucide-react";
 import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ApiError, getKbDocument } from "@/lib/api";
+import { ApiError, getKbDocument, getUserDocument } from "@/lib/api";
 import type { ChatSource, KBDocument } from "@/lib/types";
 
 export function Card({
@@ -175,10 +175,16 @@ export function EmptyState({
   );
 }
 
+// Matches the backend's USER_DOC_SLUG_PREFIX (app/rag/vector_store.py) — a citation
+// with this prefix came from something the user uploaded themselves, not the
+// curated knowledge base, and needs a different endpoint to view its content.
+const USER_DOC_SLUG_PREFIX = "user-doc:";
+
 /** The "visual confidence indicator" pattern: distinguishes an answer grounded in
  * retrieved knowledge-base content from one the model produced from general
  * reasoning alone, instead of burying that distinction in a small badge row.
- * Each source pill is a real citation — clicking it opens the actual document. */
+ * Each source pill is a real citation — clicking it opens the actual document,
+ * whether that's a curated KB doc or something the user uploaded themselves. */
 export function GroundedIn({ sources }: { sources: ChatSource[] }) {
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const [doc, setDoc] = useState<KBDocument | null>(null);
@@ -188,9 +194,15 @@ export function GroundedIn({ sources }: { sources: ChatSource[] }) {
     setOpenSlug(slug);
     setDoc(null);
     setDocError(null);
-    getKbDocument(slug)
-      .then(setDoc)
-      .catch((err) => setDocError(err instanceof ApiError ? err.message : "Couldn't load this document."));
+    const isUserDoc = slug.startsWith(USER_DOC_SLUG_PREFIX);
+    const fetchDoc = isUserDoc
+      ? getUserDocument(slug.slice(USER_DOC_SLUG_PREFIX.length)).then((d) => ({
+          slug,
+          title: d.filename,
+          content: d.content,
+        }))
+      : getKbDocument(slug);
+    fetchDoc.then(setDoc).catch((err) => setDocError(err instanceof ApiError ? err.message : "Couldn't load this document."));
   }
 
   if (sources.length === 0) {
@@ -209,7 +221,11 @@ export function GroundedIn({ sources }: { sources: ChatSource[] }) {
       <div className="mt-2 rounded-lg border border-accent/20 bg-accent/5 px-2.5 py-2">
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-accent">
           <BookOpen className="h-3 w-3" />
-          Grounded in the knowledge base
+          {unique.every((s) => s.slug.startsWith(USER_DOC_SLUG_PREFIX))
+            ? "Grounded in your uploaded documents"
+            : unique.some((s) => s.slug.startsWith(USER_DOC_SLUG_PREFIX))
+              ? "Grounded in the knowledge base and your documents"
+              : "Grounded in the knowledge base"}
         </div>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {unique.map((s) => (
@@ -219,6 +235,7 @@ export function GroundedIn({ sources }: { sources: ChatSource[] }) {
               onClick={() => openSource(s.slug)}
               className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-accent"
             >
+              {s.slug.startsWith(USER_DOC_SLUG_PREFIX) && <span className="text-accent">Yours: </span>}
               {s.title}
             </button>
           ))}

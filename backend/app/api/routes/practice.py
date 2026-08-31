@@ -27,7 +27,7 @@ async def practice_feedback(
     )
 
     answer, retrieved = await answer_question(
-        db, query, history=[], experiment_results=payload.results, persona=current_user.persona
+        db, query, history=[], experiment_results=payload.results, persona=current_user.persona, user_id=current_user.id
     )
     sources = [ChatSource(slug=c.slug, title=c.title, similarity=round(c.similarity, 3)) for c in retrieved]
 

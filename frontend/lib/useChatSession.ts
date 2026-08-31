@@ -12,19 +12,32 @@ export interface ChatUiMessage {
 
 const AUTO_QUESTION = "Can you walk me through this result and tell me what you'd do next?";
 
-/** Shared send-message logic for the full /chat page and the floating AbbotWidget —
- * one implementation, so the two surfaces can't drift out of sync.
+export interface UseChatSessionOptions {
+  /** Restore the account's most recent conversation on mount. On by default for the
+   * full /chat page and the floating widget; off for a scoped, single-purpose panel
+   * (e.g. Practice Lab's follow-up box) where pulling in an unrelated past
+   * conversation would be confusing rather than helpful. */
+  restoreHistory?: boolean;
+  /** Auto-ask the obvious first question when arriving with an experiment's context
+   * and nothing to resume. Off where something else already serves as the opening
+   * message (e.g. Practice Lab's own tailored feedback). */
+  autoSend?: boolean;
+}
+
+/** Shared send-message logic for the full /chat page, the floating AbbotWidget, and
+ * Practice Lab's follow-up box — one implementation, so these can't drift out of sync.
  *
  * Also restores the account's most recent conversation on mount instead of always
  * starting blank — chat history was persisted correctly all along, nothing ever
  * fetched it back, so every page visit (and every login) looked like total amnesia
  * even mid-conversation. */
-export function useChatSession(experimentId?: string) {
+export function useChatSession(experimentId?: string, options: UseChatSessionOptions = {}) {
+  const { restoreHistory = true, autoSend = true } = options;
   const [messages, setMessages] = useState<ChatUiMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restored, setRestored] = useState(false);
+  const [restored, setRestored] = useState(!restoreHistory);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoSentRef = useRef(false);
 
@@ -50,6 +63,7 @@ export function useChatSession(experimentId?: string) {
 
   // Restore the latest conversation once on mount.
   useEffect(() => {
+    if (!restoreHistory) return;
     let cancelled = false;
     getLatestChatSession()
       .then((data) => {
@@ -74,17 +88,27 @@ export function useChatSession(experimentId?: string) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [restoreHistory]);
 
   // Arriving with an experiment's context and truly nothing to resume — ask the
   // obvious first question automatically instead of showing an empty panel that
   // looks identical to opening chat with no context at all.
   useEffect(() => {
-    if (restored && experimentId && messages.length === 0 && !autoSentRef.current) {
+    if (autoSend && restored && experimentId && messages.length === 0 && !autoSentRef.current) {
       autoSentRef.current = true;
       send(AUTO_QUESTION);
     }
-  }, [restored, experimentId, messages.length, send]);
+  }, [autoSend, restored, experimentId, messages.length, send]);
 
-  return { messages, sending, error, send, scrollRef };
+  // Persisted history is a real feature, not a trap: a user who wants to ask about
+  // something unrelated needs an explicit way to start over, since simply refreshing
+  // the page no longer clears anything (that's the point of restoring history).
+  // Doesn't touch autoSentRef, so resetting won't re-trigger the auto-question above.
+  const reset = useCallback(() => {
+    setMessages([]);
+    setSessionId(undefined);
+    setError(null);
+  }, []);
+
+  return { messages, sending, error, send, reset, scrollRef };
 }

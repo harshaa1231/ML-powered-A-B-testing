@@ -1,4 +1,5 @@
-from app.rag.ingest import _chunk_text, _parse_title
+from app.rag.chunking import chunk_text as _chunk_text
+from app.rag.ingest import _parse_title
 
 
 def test_parse_title_extracts_h1() -> None:

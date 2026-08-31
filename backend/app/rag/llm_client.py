@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Literal
 
-from groq import Groq
+from groq import Groq, RateLimitError
 
 from app.core.config import get_settings
 
@@ -61,10 +62,40 @@ def get_client() -> Groq:
     return Groq(api_key=settings.groq_api_key)
 
 
-def chat_completion(
+def _parse_reset_seconds(header_value: str | None, default: float = 2.0) -> float:
+    """Groq returns e.g. '742ms' or '21.57s' in its rate-limit reset headers."""
+    if not header_value:
+        return default
+    value = header_value.strip()
+    try:
+        if value.endswith("ms"):
+            return float(value[:-2]) / 1000
+        if value.endswith("s"):
+            return float(value[:-1])
+        return float(value)
+    except ValueError:
+        return default
+
+
+def _call_groq(client: Groq, messages: list[dict[str, str]], max_tokens: int, temperature: float) -> str:
+    response = client.chat.completions.create(
+        model=settings.groq_model,
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return response.choices[0].message.content.strip()
+
+
+async def chat_completion(
     messages: list[dict[str, str]],
     persona: Persona | None = None,
-    max_tokens: int = 700,
+    # Measured against a real full exchange (system prompt + retrieved KB context +
+    # experiment context): a thorough answer runs ~1200 completion tokens. 1800
+    # comfortably covers that without regularly brushing against Groq's 8000
+    # tokens/minute free-tier ceiling — a single ALL-users-shared API key, so this
+    # budget is shared app-wide, not per user, and needs real headroom to sustain.
+    max_tokens: int = 1800,
     temperature: float = 0.4,
 ) -> str:
     if not settings.groq_api_key:
@@ -73,13 +104,19 @@ def chat_completion(
     client = get_client()
     full_messages = [{"role": "system", "content": system_prompt_for(persona)}, *messages]
 
-    try:
-        response = client.chat.completions.create(
-            model=settings.groq_model,
-            messages=full_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as exc:  # noqa: BLE001 - surface any provider error as a chat message
-        return f"Sorry, I couldn't reach the AI model right now ({exc})."
+    for attempt in range(2):
+        try:
+            return await asyncio.to_thread(_call_groq, client, full_messages, max_tokens, temperature)
+        except RateLimitError as exc:
+            if attempt == 0:
+                # Groq tells us exactly how long until the token bucket refills — wait
+                # that long (capped, so a bad header value can't hang a request) via
+                # asyncio.sleep, not time.sleep, so this doesn't block every other
+                # request the same process is handling while it waits.
+                wait_seconds = min(_parse_reset_seconds(exc.response.headers.get("x-ratelimit-reset-tokens")), 10.0)
+                await asyncio.sleep(wait_seconds)
+                continue
+            return "ABBot is getting a lot of questions right now — please wait a few seconds and try again."
+        except Exception as exc:  # noqa: BLE001 - surface any other provider error as a chat message
+            return f"Sorry, I couldn't reach the AI model right now ({exc})."
+    return "ABBot is getting a lot of questions right now — please wait a few seconds and try again."

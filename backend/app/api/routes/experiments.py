@@ -42,7 +42,7 @@ async def _generate_ai_summary(db: AsyncSession, results: dict[str, Any], user: 
         )
 
     query = " ".join(parts)
-    answer, _ = await answer_question(db, query, history=[], experiment_results=results, persona=user.persona)
+    answer, _ = await answer_question(db, query, history=[], experiment_results=results, persona=user.persona, user_id=user.id)
     return answer
 
 

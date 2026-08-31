@@ -33,6 +33,7 @@ pyarrow==18.1.0
 # vs ~540MB for the same model, which matters on a 512MB free-tier deploy target.
 fastembed==0.8.0
 groq==0.13.1
+pypdf==6.16.2
 
 # Testing / tooling
 pytest==8.3.4

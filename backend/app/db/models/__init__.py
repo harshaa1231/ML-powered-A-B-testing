@@ -4,6 +4,7 @@ from app.db.models.kb_document import KBChunk, KBDocument
 from app.db.models.metric import Metric
 from app.db.models.ml_run import MLRun
 from app.db.models.user import User
+from app.db.models.user_document import UserDocument, UserDocumentChunk
 
 __all__ = [
     "User",
@@ -14,4 +15,6 @@ __all__ = [
     "ChatSession",
     "ChatMessage",
     "Metric",
+    "UserDocument",
+    "UserDocumentChunk",
 ]

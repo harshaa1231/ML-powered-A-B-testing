@@ -14,6 +14,8 @@ import type {
   SampleDatasetDetail,
   SampleDatasetSummary,
   User,
+  UserDocument,
+  UserDocumentContent,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -70,6 +72,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+// Separate from request(): a multipart upload must NOT set Content-Type itself —
+// the browser needs to add the multipart boundary, which only happens if fetch is
+// left to set that header from the FormData body.
+async function requestFormData<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${API_URL}${path}`, { method: "POST", headers, body: formData });
+
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      detail = body.detail ?? detail;
+    } catch {
+      // ignore JSON parse failure, fall back to statusText
+    }
+    throw new ApiError(res.status, detail);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -244,6 +269,26 @@ export function getLatestChatSession() {
 
 export function getKbDocument(slug: string) {
   return request<KBDocument>(`/api/kb/${slug}`);
+}
+
+// --- Your uploaded documents ---
+
+export function listDocuments() {
+  return request<UserDocument[]>("/api/documents");
+}
+
+export function uploadDocument(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return requestFormData<UserDocument>("/api/documents/upload", formData);
+}
+
+export function getUserDocument(id: string) {
+  return request<UserDocumentContent>(`/api/documents/${id}`);
+}
+
+export function deleteDocument(id: string) {
+  return request<void>(`/api/documents/${id}`, { method: "DELETE" });
 }
 
 // --- Practice Lab ---

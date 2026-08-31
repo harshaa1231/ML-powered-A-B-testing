@@ -78,7 +78,9 @@ async def analytics_overview(current_user: CurrentUser, db: DbSession) -> Analyt
         "In 2-3 sentences, summarize what this trend says about their experimentation program and suggest one thing to focus on next."
     )
 
-    answer, retrieved = await answer_question(db, " ".join(query_parts), history=[], persona=current_user.persona)
+    answer, retrieved = await answer_question(
+        db, " ".join(query_parts), history=[], persona=current_user.persona, user_id=current_user.id
+    )
     sources = [ChatSource(slug=c.slug, title=c.title, similarity=round(c.similarity, 3)) for c in retrieved]
 
     return AnalyticsOverviewResponse(

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.db.models.experiment import Experiment
     from app.db.models.metric import Metric
     from app.db.models.ml_run import MLRun
+    from app.db.models.user_document import UserDocument
 
 
 class User(Base, UUIDPKMixin, TimestampMixin):
@@ -35,3 +36,4 @@ class User(Base, UUIDPKMixin, TimestampMixin):
     ml_runs: Mapped[list["MLRun"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     chat_sessions: Mapped[list["ChatSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     metrics: Mapped[list["Metric"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    documents: Mapped[list["UserDocument"]] = relationship(back_populates="user", cascade="all, delete-orphan")

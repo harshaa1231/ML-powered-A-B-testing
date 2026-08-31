@@ -122,6 +122,17 @@ export interface KBDocument {
   content: string;
 }
 
+export interface UserDocument {
+  id: string;
+  filename: string;
+  file_type: string;
+  created_at: string;
+}
+
+export interface UserDocumentContent extends UserDocument {
+  content: string;
+}
+
 export type Persona = "business" | "learner";
 
 export interface User {

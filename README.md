@@ -34,6 +34,8 @@ Signing up asks whether you're **Business** or **Learner** — this isn't a cosm
 
 One retrieval pipeline (`app/rag/retriever.py`), reused across four surfaces rather than sprinkled everywhere for appearance: **chat**, **experiment AI summaries**, **Practice Lab feedback**, and **Program Analytics trends**. Each call is grounded both in the curated knowledge base (pgvector similarity search) and in the real numbers for that specific situation — the context builder forwards every number the stats engine actually computed and explicitly instructs the model never to invent metrics beyond what it's given.
 
+**Bring your own data** — upload a CSV, TXT, MD, or PDF directly from the chat page and ABBot answers from it, everywhere it answers, not just that one conversation. Uploaded content is chunked and embedded exactly like the curated knowledge base and merged into the same retrieval pool, scoped to your account. A citation from your own upload is labeled "Yours" and clicking it shows the real content, same as a curated source.
+
 ## Tech stack
 
 | Layer | Choice |

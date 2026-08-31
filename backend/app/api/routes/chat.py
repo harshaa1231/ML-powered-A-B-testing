@@ -17,7 +17,12 @@ from app.schemas.chat import (
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
-MAX_HISTORY_MESSAGES = 12
+# Trimmed from 12: with chat history now persisting and being resent on every
+# message (see useChatSession's history restore), each extra message here is
+# real input-token cost against Groq's shared, app-wide 8000-tokens/minute free
+# tier ceiling. 8 messages (4 back-and-forth turns) is still enough context for
+# coherent follow-ups without eating into the budget a long, thorough answer needs.
+MAX_HISTORY_MESSAGES = 8
 
 
 @router.post("/message", response_model=ChatMessageResponse)
@@ -46,7 +51,9 @@ async def send_message(payload: ChatMessageRequest, current_user: CurrentUser, d
         if experiment is not None and experiment.user_id == current_user.id:
             experiment_results = experiment.results
 
-    answer, retrieved = await answer_question(db, payload.message, history, experiment_results, persona=current_user.persona)
+    answer, retrieved = await answer_question(
+        db, payload.message, history, experiment_results, persona=current_user.persona, user_id=current_user.id
+    )
 
     sources = [ChatSource(slug=c.slug, title=c.title, similarity=round(c.similarity, 3)) for c in retrieved]
 

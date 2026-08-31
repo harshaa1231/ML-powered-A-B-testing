@@ -1,25 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, Sparkles, XCircle } from "lucide-react";
 import { StreakBadge } from "@/components/StreakBadge";
-import { Badge, Button, Card, FadeIn, GroundedIn, Markdown, Select, Skeleton, StatTile } from "@/components/ui";
+import { Badge, Button, Card, FadeIn, GroundedIn, Input, Markdown, Select, Skeleton, Spinner, StatTile } from "@/components/ui";
 import { ApiError, getSampleDataset, listSampleDatasets, runAdvancedTest, submitPracticeFeedback } from "@/lib/api";
+import { useChatSession } from "@/lib/useChatSession";
 import { useProgress } from "@/lib/progress";
 import type { Experiment, PracticeFeedbackResponse, SampleDatasetSummary } from "@/lib/types";
 
 type Stage = "pick" | "conclude" | "result";
+
+// A guided multiple-choice pick, not an open "write your conclusion" prompt — someone
+// starting from zero doesn't yet have the vocabulary to write a statistical conclusion
+// unprompted, but can absolutely form and click an opinion when the options are laid
+// out. This mirrors the same pattern the Learn section's case studies already use.
+const CONCLUSION_OPTIONS = [
+  "The treatment made things better — I'd ship this",
+  "The treatment made things worse — I wouldn't ship this",
+  "I can't really tell — this looks like it could just be random chance",
+] as const;
 
 export default function PracticeLabPage() {
   const { completePracticeScenario } = useProgress();
   const [scenarios, setScenarios] = useState<SampleDatasetSummary[] | null>(null);
   const [scenarioKey, setScenarioKey] = useState("");
   const [stage, setStage] = useState<Stage>("pick");
-  const [conclusion, setConclusion] = useState("");
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [reasoning, setReasoning] = useState("");
   const [experiment, setExperiment] = useState<Experiment | null>(null);
   const [feedback, setFeedback] = useState<PracticeFeedbackResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [followUpInput, setFollowUpInput] = useState("");
 
   useEffect(() => {
     listSampleDatasets().then((all) => {
@@ -29,6 +42,28 @@ export default function PracticeLabPage() {
   }, []);
 
   const scenario = scenarios?.find((s) => s.key === scenarioKey);
+
+  // The feedback card above already serves as the opening message for this
+  // experiment's context, so this follow-up box starts empty — no auto-question,
+  // and no pulling in an unrelated past conversation from elsewhere in the app.
+  const {
+    messages: followUpMessages,
+    sending: followUpSending,
+    error: followUpError,
+    send: sendFollowUp,
+    reset: resetFollowUp,
+    scrollRef: followUpScrollRef,
+  } = useChatSession(stage === "result" ? experiment?.id : undefined, {
+    autoSend: false,
+    restoreHistory: false,
+  });
+
+  function handleFollowUpSubmit(e: FormEvent) {
+    e.preventDefault();
+    const text = followUpInput;
+    setFollowUpInput("");
+    sendFollowUp(text);
+  }
 
   async function handleAnalyze() {
     if (!scenario) return;
@@ -52,12 +87,18 @@ export default function PracticeLabPage() {
     }
   }
 
+  function conclusionText(): string {
+    if (selectedOption === null) return "";
+    const choice = CONCLUSION_OPTIONS[selectedOption];
+    return reasoning.trim() ? `${choice}. Reasoning: ${reasoning.trim()}` : choice;
+  }
+
   async function handleSubmitConclusion() {
-    if (!experiment || !conclusion.trim()) return;
+    if (!experiment || selectedOption === null) return;
     setError(null);
     setLoading(true);
     try {
-      const fb = await submitPracticeFeedback(scenario?.name ?? "this scenario", conclusion, experiment.results);
+      const fb = await submitPracticeFeedback(scenario?.name ?? "this scenario", conclusionText(), experiment.results);
       setFeedback(fb);
       completePracticeScenario(scenarioKey);
       setStage("result");
@@ -70,10 +111,13 @@ export default function PracticeLabPage() {
 
   function reset() {
     setStage("pick");
-    setConclusion("");
+    setSelectedOption(null);
+    setReasoning("");
     setExperiment(null);
     setFeedback(null);
     setError(null);
+    setFollowUpInput("");
+    resetFollowUp();
   }
 
   return (
@@ -120,19 +164,50 @@ export default function PracticeLabPage() {
 
             {stage === "conclude" && experiment && (
               <>
-                <p className="text-sm font-medium">Before you see the numbers laid out — what do you conclude?</p>
+                {scenario && (
+                  <div className="mb-4 rounded-lg border border-surface-border bg-surface-2/40 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">What you&apos;re looking at</p>
+                    <p className="mt-1 text-sm text-muted">{scenario.description}</p>
+                  </div>
+                )}
+                <p className="text-sm font-medium">Before you see the numbers laid out — what&apos;s your best guess?</p>
                 <p className="mt-1 text-xs text-muted">
-                  We ran the real {experiment.results.test_name} on this data. Write your read on it before we show you ours.
+                  We ran a real {experiment.results.test_name} on this data. Pick the option closest to your read —
+                  there&apos;s no wrong answer here, this is exactly what practice is for.
                 </p>
+                <div className="mt-3 space-y-2">
+                  {CONCLUSION_OPTIONS.map((option, i) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setSelectedOption(i)}
+                      className={`flex w-full items-center rounded-lg border px-3.5 py-2.5 text-left text-sm transition-colors ${
+                        selectedOption === i
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-surface-border hover:bg-surface-2"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-4 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Why do you think that? (optional)
+                </label>
                 <textarea
-                  value={conclusion}
-                  onChange={(e) => setConclusion(e.target.value)}
-                  rows={4}
-                  placeholder="e.g. I think this is significant and the effect is worth shipping because..."
-                  className="mt-3 w-full rounded-xl border border-surface-border bg-surface-2/60 px-3.5 py-2.5 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-[var(--ring)]"
+                  value={reasoning}
+                  onChange={(e) => setReasoning(e.target.value)}
+                  rows={3}
+                  placeholder="Only if you want to elaborate — totally fine to skip this."
+                  className="mt-1.5 w-full rounded-xl border border-surface-border bg-surface-2/60 px-3.5 py-2.5 text-sm outline-none focus:border-accent focus:ring-4 focus:ring-[var(--ring)]"
                 />
                 {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-                <Button onClick={handleSubmitConclusion} loading={loading} disabled={!conclusion.trim()} className="mt-3 w-full">
+                <Button
+                  onClick={handleSubmitConclusion}
+                  loading={loading}
+                  disabled={selectedOption === null}
+                  className="mt-3 w-full"
+                >
                   Submit & compare
                 </Button>
               </>
@@ -158,7 +233,8 @@ export default function PracticeLabPage() {
 
                 <div className="rounded-lg border border-surface-border bg-surface-2/40 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted">Your conclusion</p>
-                  <p className="mt-1 text-sm text-muted">{conclusion}</p>
+                  <p className="mt-1 text-sm text-muted">{selectedOption !== null ? CONCLUSION_OPTIONS[selectedOption] : ""}</p>
+                  {reasoning.trim() && <p className="mt-1 text-sm italic text-muted">&ldquo;{reasoning.trim()}&rdquo;</p>}
                 </div>
 
                 <div className="rounded-lg border border-accent/20 bg-accent/5 p-3">
@@ -168,6 +244,46 @@ export default function PracticeLabPage() {
                   </div>
                   <Markdown className="mt-2">{feedback.feedback}</Markdown>
                   <GroundedIn sources={feedback.sources} />
+                </div>
+
+                <div className="rounded-lg border border-surface-border p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                    Still not sure, or want to push back? Ask ABBot
+                  </p>
+                  {followUpMessages.length > 0 && (
+                    <div className="mt-2 max-h-64 space-y-3 overflow-y-auto">
+                      {followUpMessages.map((m, i) => (
+                        <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                          <div
+                            className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                              m.role === "user" ? "bg-accent text-accent-foreground" : "bg-surface-2"
+                            }`}
+                          >
+                            {m.role === "assistant" ? (
+                              <Markdown>{m.content}</Markdown>
+                            ) : (
+                              <p className="whitespace-pre-wrap">{m.content}</p>
+                            )}
+                            {m.role === "assistant" && <GroundedIn sources={m.sources ?? []} />}
+                          </div>
+                        </div>
+                      ))}
+                      {followUpSending && <Spinner className="h-3.5 w-3.5" />}
+                      <div ref={followUpScrollRef} />
+                    </div>
+                  )}
+                  {followUpError && <p className="mt-2 text-sm text-danger">{followUpError}</p>}
+                  <form onSubmit={handleFollowUpSubmit} className="mt-2 flex gap-2">
+                    <Input
+                      value={followUpInput}
+                      onChange={(e) => setFollowUpInput(e.target.value)}
+                      placeholder="e.g. Why isn't a -0.6% drop good enough evidence?"
+                      className="text-sm"
+                    />
+                    <Button type="submit" size="sm" disabled={followUpSending || !followUpInput.trim()}>
+                      Send
+                    </Button>
+                  </form>
                 </div>
 
                 <Button onClick={reset} variant="secondary" className="w-full">

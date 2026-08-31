@@ -8,6 +8,7 @@ too, not just the live experiment numbers.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +72,11 @@ def build_kb_context(chunks: list[RetrievedChunk]) -> str:
     if not chunks:
         return ""
     blocks = [f"[{c.title}]\n{c.content}" for c in chunks]
-    return "Relevant reference material:\n\n" + "\n\n---\n\n".join(blocks)
+    return (
+        "Relevant reference material (this may include documents the user uploaded themselves, "
+        "not just the curated knowledge base — treat both as equally valid sources):\n\n"
+        + "\n\n---\n\n".join(blocks)
+    )
 
 
 async def answer_question(
@@ -80,8 +85,9 @@ async def answer_question(
     history: list[dict[str, str]],
     experiment_results: dict[str, Any] | None = None,
     persona: Persona | None = None,
+    user_id: uuid.UUID | None = None,
 ) -> tuple[str, list[RetrievedChunk]]:
-    retrieved = await similarity_search(db, question, top_k=settings.rag_top_k)
+    retrieved = await similarity_search(db, question, top_k=settings.rag_top_k, user_id=user_id)
 
     context_parts = [p for p in (build_kb_context(retrieved), build_experiment_context(experiment_results)) if p]
     context_message = "\n\n".join(context_parts)
@@ -91,5 +97,5 @@ async def answer_question(
         messages.append({"role": "system", "content": context_message})
     messages.append({"role": "user", "content": question})
 
-    answer = chat_completion(messages, persona=persona)
+    answer = await chat_completion(messages, persona=persona)
     return answer, retrieved

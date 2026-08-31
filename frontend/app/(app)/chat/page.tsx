@@ -2,10 +2,11 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useChatSession } from "@/lib/useChatSession";
 import { Button, GroundedIn, Input, Markdown, Spinner } from "@/components/ui";
+import { DocumentUpload } from "@/components/DocumentUpload";
 
 const BUSINESS_STARTERS = [
   "Is this result ready to ship?",
@@ -33,7 +34,7 @@ function ChatPageInner() {
   const { user } = useAuth();
   const starterQuestions = user?.persona === "learner" ? LEARNER_STARTERS : BUSINESS_STARTERS;
 
-  const { messages, sending, error, send, scrollRef } = useChatSession(experimentId);
+  const { messages, sending, error, send, reset, scrollRef } = useChatSession(experimentId);
   const [input, setInput] = useState("");
 
   function handleSubmit(e: FormEvent) {
@@ -46,12 +47,25 @@ function ChatPageInner() {
   return (
     <>
       <div className="mx-auto flex h-[calc(100vh-5rem)] max-w-3xl flex-col">
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold">Ask ABBot</h1>
-          <p className="mt-1 text-sm text-muted">
-            Grounded in a curated A/B testing knowledge base{experimentId ? " and your selected experiment's live results" : ""}.
-          </p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Ask ABBot</h1>
+            <p className="mt-1 text-sm text-muted">
+              Grounded in a curated A/B testing knowledge base{experimentId ? " and your selected experiment's live results" : ""}.
+            </p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={reset}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-2 hover:text-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              New conversation
+            </button>
+          )}
         </div>
+
+        <DocumentUpload />
 
         <div className="flex-1 space-y-4 overflow-y-auto rounded-xl border border-surface-border bg-surface p-4">
           {messages.length === 0 && (
